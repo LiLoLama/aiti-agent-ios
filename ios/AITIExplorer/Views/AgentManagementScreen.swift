@@ -127,7 +127,7 @@ private struct WebhookTestState: Equatable {
 
 private struct AgentEditorCard: View {
     @Binding var agent: AgentProfile
-    @Binding var focusedField: AgentField?
+    var focusedField: FocusState<AgentField?>.Binding
     var status: WebhookTestState?
     var onTestWebhook: () -> Void
     var onRemove: () -> Void
@@ -137,12 +137,12 @@ private struct AgentEditorCard: View {
             TextField("Name", text: $agent.name)
                 .textInputAutocapitalization(.words)
                 .disableAutocorrection(true)
-                .focused($focusedField, equals: .agentName(agent.id))
+                .focused(focusedField, equals: .agentName(agent.id))
 
             TextField("Rolle", text: $agent.role)
                 .textInputAutocapitalization(.sentences)
                 .disableAutocorrection(true)
-                .focused($focusedField, equals: .agentRole(agent.id))
+                .focused(focusedField, equals: .agentRole(agent.id))
 
             HStack {
                 Label(agent.status.description, systemImage: "checkmark.circle.fill")
@@ -161,7 +161,7 @@ private struct AgentEditorCard: View {
             .keyboardType(.URL)
             .textInputAutocapitalization(.never)
             .disableAutocorrection(true)
-            .focused($focusedField, equals: .agentWebhook(agent.id))
+            .focused(focusedField, equals: .agentWebhook(agent.id))
 
             HStack {
                 Button("Webhook testen") {
