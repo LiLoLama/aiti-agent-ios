@@ -26,14 +26,17 @@ struct AgentManagementScreen: View {
                 Text("Noch keine Agents angelegt. Erstelle unten deinen ersten Agenten.")
                     .foregroundStyle(.secondary)
             } else {
-                ForEach($viewModel.agents) { $agent in
+                ForEach(viewModel.agents.indices, id: \.self) { index in
+                    let agentBinding = $viewModel.agents[index]
+                    let agent = viewModel.agents[index]
+
                     AgentEditorCard(
-                        agent: $agent,
-                        status: webhookStatus[agent.wrappedValue.id],
-                        onTestWebhook: { testWebhook(for: agent.wrappedValue) },
+                        agent: agentBinding,
+                        status: webhookStatus[agent.id],
+                        onTestWebhook: { testWebhook(for: agent) },
                         onRemove: {
-                            webhookStatus[agent.wrappedValue.id] = nil
-                            viewModel.removeAgent(agent.wrappedValue)
+                            webhookStatus[agent.id] = nil
+                            viewModel.removeAgent(agent)
                         }
                     )
                 }
