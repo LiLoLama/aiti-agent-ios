@@ -589,27 +589,38 @@ private struct AudioRecorderSheet: View {
 
         #if canImport(AVFAudio)
         if #available(iOS 17, *) {
-            let application = AVAudioApplication.shared
-            let permission = application.recordPermission
-            switch permission {
-            case .undetermined:
-                permissionStatus = .undetermined
-                application.requestRecordPermission { granted in
-                    DispatchQueue.main.async {
-                        permissionStatus = granted ? .granted : .denied
-                    }
-                }
-            case .granted:
-                permissionStatus = .granted
-            case .denied:
-                permissionStatus = .denied
-            @unknown default:
-                permissionStatus = .denied
-            }
-            return
+            updatePermissionUsingApplication()
+        } else {
+            updatePermission(using: session)
         }
+        #else
+        updatePermission(using: session)
         #endif
+    }
 
+    #if canImport(AVFAudio)
+    @available(iOS 17, *)
+    private func updatePermissionUsingApplication() {
+        let application = AVAudioApplication.shared
+        switch application.recordPermission {
+        case .undetermined:
+            permissionStatus = .undetermined
+            application.requestRecordPermission { granted in
+                DispatchQueue.main.async {
+                    permissionStatus = granted ? .granted : .denied
+                }
+            }
+        case .granted:
+            permissionStatus = .granted
+        case .denied:
+            permissionStatus = .denied
+        @unknown default:
+            permissionStatus = .denied
+        }
+    }
+    #endif
+
+    private func updatePermission(using session: AVAudioSession) {
         let permission = session.recordPermission
         switch permission {
         case .undetermined:
