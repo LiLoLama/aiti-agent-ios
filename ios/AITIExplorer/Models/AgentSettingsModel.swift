@@ -72,7 +72,6 @@ struct AgentSettingsModel: Codable, Hashable {
     var playSendSound: Bool
     var showTypingIndicator: Bool
     var preferCompactLayout: Bool
-    var webhookURL: URL?
     var notes: String
 
     static let `default` = AgentSettingsModel(
@@ -81,7 +80,6 @@ struct AgentSettingsModel: Codable, Hashable {
         playSendSound: true,
         showTypingIndicator: true,
         preferCompactLayout: false,
-        webhookURL: nil,
         notes: ""
     )
 }

@@ -58,6 +58,7 @@ struct AgentProfile: Identifiable, Codable, Hashable {
     var status: AgentStatus
     var avatarSystemName: String
     var conversation: Conversation
+    var webhookURL: URL?
 
     init(
         id: UUID = UUID(),
@@ -66,7 +67,8 @@ struct AgentProfile: Identifiable, Codable, Hashable {
         description: String,
         status: AgentStatus = .online,
         avatarSystemName: String = "bolt.fill",
-        conversation: Conversation
+        conversation: Conversation,
+        webhookURL: URL? = nil
     ) {
         self.id = id
         self.name = name
@@ -75,5 +77,6 @@ struct AgentProfile: Identifiable, Codable, Hashable {
         self.status = status
         self.avatarSystemName = avatarSystemName
         self.conversation = conversation
+        self.webhookURL = webhookURL
     }
 }

@@ -42,7 +42,7 @@ final class ProfileViewModel: ObservableObject {
         profile.bio = draftBio
         profile.isActive = isActive
         profile.agents = agents
-        appState?.updateCurrentUser(profile)
+        persistProfileChanges()
         toastMessage = "Profil gespeichert"
     }
 
@@ -51,31 +51,50 @@ final class ProfileViewModel: ObservableObject {
         var updated = agent
         updated.status = agent.status == .online ? .offline : .online
         agents[index] = updated
-        saveProfile()
+        saveAgentChanges()
     }
 
-    func addAgent(name: String, role: String) {
+    func addAgent(name: String, role: String, webhookURLString: String) {
         guard !name.isEmpty else { return }
         let agentId = UUID()
         let conversation = Conversation(agentId: agentId, title: "Neuer Chat")
+        let trimmedWebhook = webhookURLString.trimmingCharacters(in: .whitespacesAndNewlines)
+        let webhookURL = trimmedWebhook.isEmpty ? nil : URL(string: trimmedWebhook)
         let agent = AgentProfile(
             id: agentId,
             name: name,
             role: role.isEmpty ? "Individueller Agent" : role,
             description: "Neuer individueller Agent.",
-            conversation: conversation
+            conversation: conversation,
+            webhookURL: webhookURL
         )
         agents.append(agent)
-        saveProfile()
+        saveAgentChanges(showToast: true)
     }
 
     func removeAgent(_ agent: AgentProfile) {
         agents.removeAll { $0.id == agent.id }
-        saveProfile()
+        saveAgentChanges(showToast: true)
+    }
+
+    func saveAgentChanges(showToast: Bool = false) {
+        persistAgents(showToast: showToast)
     }
 }
 
 private extension ProfileViewModel {
+    func persistProfileChanges() {
+        appState?.updateCurrentUser(profile)
+    }
+
+    func persistAgents(showToast: Bool = false) {
+        profile.agents = agents
+        persistProfileChanges()
+        if showToast {
+            toastMessage = "Agents aktualisiert"
+        }
+    }
+
     func configureBindings() {
         cancellables.removeAll()
 

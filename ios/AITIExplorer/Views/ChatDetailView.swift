@@ -8,6 +8,7 @@ struct ChatDetailView: View {
     var onShowSearch: () -> Void
 
     @Namespace private var bottomID
+    @FocusState private var isComposerFocused: Bool
 
     var body: some View {
         VStack(spacing: 0) {
@@ -41,15 +42,28 @@ struct ChatDetailView: View {
                         proxy.scrollTo(bottomID, anchor: .bottom)
                     }
                 }
+                .onChange(of: isComposerFocused) { focused in
+                    guard focused else { return }
+                    withAnimation(.easeInOut(duration: 0.25)) {
+                        proxy.scrollTo(bottomID, anchor: .bottom)
+                    }
+                }
             }
-
-            Divider()
-
-            MessageComposer(text: $draftedMessage, onSend: onSend)
-                .padding()
-                .background(.thinMaterial)
         }
-        .ignoresSafeArea(.keyboard)
+        .safeAreaInset(edge: .bottom) {
+            VStack(spacing: 0) {
+                Divider()
+                MessageComposer(
+                    text: $draftedMessage,
+                    onSend: onSend,
+                    isFocused: $isComposerFocused
+                )
+                .padding(.horizontal)
+                .padding(.top, 12)
+                .padding(.bottom, 8)
+            }
+            .background(.thinMaterial)
+        }
     }
 }
 
@@ -233,16 +247,50 @@ private struct TypingIndicatorView: View {
 private struct MessageComposer: View {
     @Binding var text: String
     var onSend: (String) -> Void
+    var isFocused: FocusState<Bool>.Binding
+
+    private var trimmedText: String {
+        text.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
 
     var body: some View {
         HStack(alignment: .bottom, spacing: 12) {
-            TextEditor(text: $text)
-                .frame(minHeight: 44, maxHeight: 120)
-                .padding(12)
-                .background(RoundedRectangle(cornerRadius: 16).fill(Color(.secondarySystemBackground)))
+            ZStack(alignment: .topLeading) {
+                if trimmedText.isEmpty {
+                    Text("Nachricht schreiben …")
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 22)
+                        .padding(.vertical, 18)
+                }
+
+                TextEditor(text: $text)
+                    .frame(minHeight: 44, maxHeight: 120)
+                    .scrollContentBackground(.hidden)
+                    .focused(isFocused)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+            }
+            .background(RoundedRectangle(cornerRadius: 16).fill(Color(.secondarySystemBackground)))
+
+            if isFocused.wrappedValue {
+                Button {
+                    isFocused.wrappedValue = false
+                } label: {
+                    Image(systemName: "keyboard.chevron.compact.down")
+                        .font(.title3)
+                        .padding(10)
+                        .background(RoundedRectangle(cornerRadius: 12).fill(Color(.secondarySystemBackground)))
+                }
+                .accessibilityLabel("Tastatur schließen")
+                .transition(.opacity.combined(with: .scale))
+            }
 
             Button {
-                onSend(text)
+                let message = trimmedText
+                guard !message.isEmpty else { return }
+                onSend(message)
+                text = ""
+                isFocused.wrappedValue = false
             } label: {
                 Image(systemName: "paperplane.fill")
                     .font(.title3.bold())
@@ -250,7 +298,16 @@ private struct MessageComposer: View {
                     .padding(12)
                     .background(Circle().fill(Color.accentColor))
             }
-            .disabled(text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            .disabled(trimmedText.isEmpty)
+        }
+        .animation(.easeInOut(duration: 0.2), value: isFocused.wrappedValue)
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Fertig") {
+                    isFocused.wrappedValue = false
+                }
+            }
         }
     }
 }
