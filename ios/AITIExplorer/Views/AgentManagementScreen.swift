@@ -21,7 +21,7 @@ struct AgentManagementScreen: View {
     }
 
     private var agentsSection: some View {
-        Section(header: Text("Deine Agents"), footer: Text("Lege für jeden Agent individuelle Webhooks und Status fest.")) {
+        Section(header: Text("Deine Agents"), footer: Text("Lege für jeden Agent individuelle Webhooks fest.")) {
             if viewModel.agents.isEmpty {
                 Text("Noch keine Agents angelegt. Erstelle unten deinen ersten Agenten.")
                     .foregroundStyle(.secondary)
@@ -116,12 +116,12 @@ private struct AgentEditorCard: View {
                 .textInputAutocapitalization(.sentences)
                 .disableAutocorrection(true)
 
-            Picker("Status", selection: $agent.status) {
-                ForEach(AgentStatus.allCases) { status in
-                    Text(status.description).tag(status)
-                }
+            HStack {
+                Label(agent.status.description, systemImage: "checkmark.circle.fill")
+                    .font(.footnote)
+                    .foregroundStyle(Color.green)
+                Spacer()
             }
-            .pickerStyle(.menu)
 
             TextField("Webhook URL", text: Binding(
                 get: { agent.webhookURL?.absoluteString ?? "" },

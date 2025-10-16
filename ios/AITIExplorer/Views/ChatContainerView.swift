@@ -116,35 +116,13 @@ private struct ChatListRow: View {
                 Text(agent.conversation.lastUpdated, style: .time)
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                Label(agent.status.description, systemImage: statusIcon)
+                Label(agent.status.description, systemImage: "checkmark.circle.fill")
                     .font(.caption2)
                     .labelStyle(.titleAndIcon)
-                    .foregroundStyle(statusColor)
+                    .foregroundStyle(Color.green)
             }
         }
         .padding(.vertical, 6)
-    }
-
-    private var statusIcon: String {
-        switch agent.status {
-        case .online:
-            return "circle.fill"
-        case .offline:
-            return "circle"
-        case .busy:
-            return "clock"
-        }
-    }
-
-    private var statusColor: Color {
-        switch agent.status {
-        case .online:
-            return .green
-        case .offline:
-            return .gray
-        case .busy:
-            return .orange
-        }
     }
 }
 

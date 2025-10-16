@@ -87,9 +87,9 @@ private struct ChatHeaderView: View {
                 Text(agent.role)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-                Label(agent.status.description, systemImage: statusIcon)
+                Label(agent.status.description, systemImage: "checkmark.circle.fill")
                     .font(.caption)
-                    .foregroundStyle(statusColor)
+                    .foregroundStyle(Color.green)
             }
 
             Spacer()
@@ -104,28 +104,6 @@ private struct ChatHeaderView: View {
         }
         .padding([.horizontal, .top])
         .padding(.bottom, 12)
-    }
-
-    private var statusIcon: String {
-        switch agent.status {
-        case .online:
-            return "circle.fill"
-        case .offline:
-            return "circle"
-        case .busy:
-            return "clock.fill"
-        }
-    }
-
-    private var statusColor: Color {
-        switch agent.status {
-        case .online:
-            return .green
-        case .offline:
-            return .gray
-        case .busy:
-            return .orange
-        }
     }
 }
 
