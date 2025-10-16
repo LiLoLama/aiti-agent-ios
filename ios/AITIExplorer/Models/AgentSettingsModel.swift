@@ -55,7 +55,7 @@ enum AccentColorOption: String, CaseIterable, Identifiable, Codable {
     var color: Color {
         switch self {
         case .gold:
-            return Color(red: 0.95, green: 0.79, blue: 0.36)
+            return ExplorerTheme.goldHighlightStart
         case .emerald:
             return Color(red: 0.19, green: 0.69, blue: 0.49)
         case .indigo:
@@ -69,11 +69,9 @@ enum AccentColorOption: String, CaseIterable, Identifiable, Codable {
 struct AgentSettingsModel: Codable, Hashable {
     var colorScheme: ColorSchemeOption
     var accentColor: AccentColorOption
-    var playSendSound: Bool
 
     static let `default` = AgentSettingsModel(
         colorScheme: .system,
-        accentColor: .gold,
-        playSendSound: true
+        accentColor: .gold
     )
 }

@@ -26,6 +26,11 @@
     <array>
         <string>UIInterfaceOrientationPortrait</string>
     </array>
+    <key>UIAppFonts</key>
+    <array>
+        <string>Fonts/Inter-Regular.ttf</string>
+        <string>Fonts/Inter-SemiBold.ttf</string>
+    </array>
     <key>NSMicrophoneUsageDescription</key>
     <string>This app uses the microphone to record voice messages when you tap the microphone button.</string>
 </dict>

@@ -12,6 +12,7 @@ struct RootView: View {
             }
         }
         .animation(.easeInOut, value: appState.currentUser)
+        .explorerBackground()
     }
 }
 
