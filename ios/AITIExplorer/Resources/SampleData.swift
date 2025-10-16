@@ -58,7 +58,11 @@ enum SampleData {
             avatarSystemName: "megaphone.fill",
             conversation: conversation(agentId: id, title: "Launch Kampagne"),
             webhookURL: URL(string: "https://hooks.aiti.ai/marketing"),
-            tools: [.webSearch, .automation, .webhook]
+            tools: [
+                AgentTool(name: "Websuche"),
+                AgentTool(name: "Automatisierungen"),
+                AgentTool(name: "Webhook")
+            ]
         )
     }
 
@@ -73,7 +77,10 @@ enum SampleData {
             avatarSystemName: "shippingbox.fill",
             conversation: conversation(agentId: id, title: "Feature Discovery"),
             webhookURL: URL(string: "https://hooks.aiti.ai/product"),
-            tools: [.automation, .dataAnalysis]
+            tools: [
+                AgentTool(name: "Automatisierungen"),
+                AgentTool(name: "Datenanalyse")
+            ]
         )
     }
 
@@ -88,7 +95,10 @@ enum SampleData {
             avatarSystemName: "chart.bar.fill",
             conversation: conversation(agentId: id, title: "Marktanalyse"),
             webhookURL: URL(string: "https://hooks.aiti.ai/research"),
-            tools: [.webSearch, .dataAnalysis]
+            tools: [
+                AgentTool(name: "Websuche"),
+                AgentTool(name: "Datenanalyse")
+            ]
         )
     }
 
@@ -117,8 +127,7 @@ enum SampleData {
         }
         return AgentSettingsModel(
             colorScheme: .system,
-            accentColor: .gold,
-            playSendSound: true
+            accentColor: .gold
         )
     }
 

@@ -21,12 +21,21 @@ struct AgentManagementScreen: View {
     @FocusState private var focusedField: AgentField?
 
     var body: some View {
-        Form {
-            agentsSection
-            addAgentSection
+        ScrollView(showsIndicators: false) {
+            VStack(spacing: 28) {
+                headerCard
+
+                agentsSection
+
+                newAgentCard
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 40)
+            .padding(.top, 16)
         }
         .navigationTitle("Agents verwalten")
         .toolbar { toolbarContent }
+        .explorerBackground()
         .scrollDismissesKeyboard(.interactively)
         .dismissFocusOnInteract($focusedField)
         .confirmationDialog(
@@ -54,11 +63,37 @@ struct AgentManagementScreen: View {
         }
     }
 
+    private var headerCard: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Deine orchestrierten Agents")
+                .font(.explorer(.title3, weight: .semibold))
+                .foregroundStyle(ExplorerTheme.textPrimary)
+
+            Text("Aktiviere Workflows, verwalte Tool-Zugriffe und definiere Webhooks pro Agent. Änderungen werden sofort synchronisiert.")
+                .font(.explorer(.footnote))
+                .foregroundStyle(ExplorerTheme.textSecondary)
+
+            if !viewModel.agents.isEmpty {
+                Text("\(viewModel.agents.count) aktive Agenten")
+                    .font(.explorer(.caption, weight: .medium))
+                    .foregroundStyle(ExplorerTheme.goldGradient)
+            }
+        }
+        .padding(26)
+        .background(
+            RoundedRectangle(cornerRadius: 30, style: .continuous)
+                .fill(ExplorerTheme.surface.opacity(0.92))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 30, style: .continuous)
+                        .stroke(ExplorerTheme.goldHighlightStart.opacity(0.35), lineWidth: 1.1)
+                )
+        )
+    }
+
     private var agentsSection: some View {
-        Section(header: Text("Deine Agents"), footer: Text("Lege für jeden Agent individuelle Webhooks fest.")) {
+        VStack(spacing: 22) {
             if viewModel.agents.isEmpty {
-                Text("Noch keine Agents angelegt. Erstelle unten deinen ersten Agenten.")
-                    .foregroundStyle(.secondary)
+                emptyState
             } else {
                 ForEach(viewModel.agents.indices, id: \.self) { index in
                     let agentBinding = $viewModel.agents[index]
@@ -79,25 +114,48 @@ struct AgentManagementScreen: View {
         }
     }
 
-    private var addAgentSection: some View {
-        Section(header: Text("Neuen Agent hinzufügen")) {
-            TextField("Name", text: $newAgentName)
+    private var emptyState: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Noch keine Agents angelegt")
+                .font(.explorer(.callout, weight: .semibold))
+                .foregroundStyle(ExplorerTheme.textSecondary)
+            Text("Nutze das Formular unten, um deinen ersten Agenten anzulegen und mit Tools auszustatten.")
+                .font(.explorer(.footnote))
+                .foregroundStyle(ExplorerTheme.textMuted)
+        }
+        .padding(24)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 28, style: .continuous)
+                .fill(ExplorerTheme.surface.opacity(0.85))
+        )
+    }
+
+    private var newAgentCard: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Text("Neuen Agent hinzufügen")
+                .font(.explorer(.headline, weight: .semibold))
+                .foregroundStyle(ExplorerTheme.textPrimary)
+
+            explorerTextField("Name", text: $newAgentName)
                 .textInputAutocapitalization(.words)
                 .disableAutocorrection(true)
                 .focused($focusedField, equals: .newName)
-            TextField("Rolle", text: $newAgentRole)
+
+            explorerTextField("Rolle", text: $newAgentRole)
                 .textInputAutocapitalization(.sentences)
                 .disableAutocorrection(true)
                 .focused($focusedField, equals: .newRole)
-            TextField("Webhook URL (optional)", text: $newAgentWebhook)
+
+            explorerTextField("Webhook URL (optional)", text: $newAgentWebhook)
                 .keyboardType(.URL)
                 .textInputAutocapitalization(.never)
                 .disableAutocorrection(true)
                 .focused($focusedField, equals: .newWebhook)
 
-            ToolSelectionGrid(selection: $newAgentTools)
+            ToolEditor(title: "Aktive Tools", tools: $newAgentTools)
 
-            Button("Agent erstellen") {
+            Button {
                 viewModel.addAgent(
                     name: newAgentName.trimmingCharacters(in: .whitespacesAndNewlines),
                     role: newAgentRole.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -109,18 +167,37 @@ struct AgentManagementScreen: View {
                 newAgentWebhook = ""
                 newAgentTools = []
                 focusedField = nil
+            } label: {
+                Text("Agent erstellen")
             }
+            .buttonStyle(ExplorerPrimaryButtonStyle())
             .disabled(newAgentName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
+        .padding(26)
+        .background(
+            RoundedRectangle(cornerRadius: 30, style: .continuous)
+                .fill(ExplorerTheme.surface.opacity(0.92))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 30, style: .continuous)
+                        .stroke(ExplorerTheme.goldHighlightStart.opacity(0.3), lineWidth: 1.1)
+                )
+        )
     }
 
-    @ToolbarContentBuilder
-    private var toolbarContent: some ToolbarContent {
-        ToolbarItem(placement: .navigationBarTrailing) {
-            Button("Speichern") {
-                viewModel.saveAgentChanges(showToast: true)
-            }
-        }
+    private func explorerTextField(_ placeholder: String, text: Binding<String>) -> some View {
+        TextField(placeholder, text: text)
+            .padding(.horizontal, 18)
+            .padding(.vertical, 14)
+            .background(
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(ExplorerTheme.surface.opacity(0.85))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .stroke(ExplorerTheme.goldHighlightStart.opacity(0.3), lineWidth: 1)
+            )
+            .font(.explorer(.callout))
+            .foregroundStyle(ExplorerTheme.textPrimary)
     }
 
     private func testWebhook(for agent: AgentProfile) {
@@ -133,6 +210,19 @@ struct AgentManagementScreen: View {
         webhookStatus[id] = WebhookTestState(message: "Webhook Test wird gesendet …", isError: false, isLoading: true)
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
             webhookStatus[id] = WebhookTestState(message: "Webhook erfolgreich simuliert!", isError: false, isLoading: false)
+        }
+    }
+
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .navigationBarTrailing) {
+            Button {
+                viewModel.saveAgentChanges(showToast: true)
+            } label: {
+                Text("Änderungen sichern")
+            }
+            .buttonStyle(ExplorerPrimaryButtonStyle())
+            .frame(width: 220)
         }
     }
 }
@@ -151,23 +241,57 @@ private struct AgentEditorCard: View {
     var onRemove: () -> Void
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 18) {
+            HStack(alignment: .center, spacing: 16) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Agent „\(agent.name)“")
+                        .font(.explorer(.headline, weight: .semibold))
+                        .foregroundStyle(ExplorerTheme.textPrimary)
+                    Text(agent.role)
+                        .font(.explorer(.footnote))
+                        .foregroundStyle(ExplorerTheme.textSecondary)
+                }
+
+                Spacer()
+
+                Label(agent.status.description, systemImage: "circle.fill")
+                    .font(.explorer(.caption, weight: .semibold))
+                    .foregroundStyle(ExplorerTheme.success)
+            }
+
             TextField("Name", text: $agent.name)
                 .textInputAutocapitalization(.words)
                 .disableAutocorrection(true)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(ExplorerTheme.surface.opacity(0.85))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(ExplorerTheme.goldHighlightStart.opacity(0.3), lineWidth: 1)
+                )
+                .font(.explorer(.callout))
+                .foregroundStyle(ExplorerTheme.textPrimary)
                 .focused(focusedField, equals: .agentName(agent.id))
 
             TextField("Rolle", text: $agent.role)
                 .textInputAutocapitalization(.sentences)
                 .disableAutocorrection(true)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(ExplorerTheme.surface.opacity(0.85))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .stroke(ExplorerTheme.goldHighlightStart.opacity(0.3), lineWidth: 1)
+                )
+                .font(.explorer(.callout))
+                .foregroundStyle(ExplorerTheme.textPrimary)
                 .focused(focusedField, equals: .agentRole(agent.id))
-
-            HStack {
-                Label(agent.status.description, systemImage: "checkmark.circle.fill")
-                    .font(.footnote)
-                    .foregroundStyle(Color.green)
-                Spacer()
-            }
 
             TextField("Webhook URL", text: Binding(
                 get: { agent.webhookURL?.absoluteString ?? "" },
@@ -179,41 +303,94 @@ private struct AgentEditorCard: View {
             .keyboardType(.URL)
             .textInputAutocapitalization(.never)
             .disableAutocorrection(true)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .fill(ExplorerTheme.surface.opacity(0.85))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                    .stroke(ExplorerTheme.goldHighlightStart.opacity(0.3), lineWidth: 1)
+            )
+            .font(.explorer(.callout))
+            .foregroundStyle(ExplorerTheme.textPrimary)
             .focused(focusedField, equals: .agentWebhook(agent.id))
 
-            ToolSelectionGrid(selection: $agent.tools)
+            ToolEditor(title: "Aktive Tools", tools: $agent.tools)
 
-            HStack {
+            HStack(spacing: 12) {
                 Button("Webhook testen") {
                     onTestWebhook()
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(ExplorerSecondaryButtonStyle())
+
                 if status?.isLoading == true {
                     ProgressView()
                         .progressViewStyle(.circular)
+                        .tint(ExplorerTheme.goldHighlightStart)
                 }
+
                 Spacer()
-                Button("Entfernen", role: .destructive) {
+
+                Button(role: .destructive) {
                     onRemove()
+                } label: {
+                    Text("Agent entfernen")
+                        .font(.explorer(.callout, weight: .semibold))
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                .fill(ExplorerTheme.danger.opacity(0.18))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                                .stroke(ExplorerTheme.danger.opacity(0.45), lineWidth: 1)
+                        )
+                        .foregroundStyle(ExplorerTheme.danger)
                 }
-                .buttonStyle(.bordered)
+                .buttonStyle(.plain)
             }
 
             if let status {
-                HStack(spacing: 6) {
-                    Image(systemName: statusIcon(for: status))
-                        .foregroundStyle(status.isError ? Color.red : Color.green)
-                    Text(status.message)
-                        .font(.caption)
-                        .foregroundStyle(status.isError ? Color.red : Color.secondary)
-                }
-                .transition(.opacity)
+                StatusMessageView(status: status)
+                    .transition(.opacity)
             }
         }
-        .padding(.vertical, 8)
+        .padding(26)
+        .background(
+            RoundedRectangle(cornerRadius: 30, style: .continuous)
+                .fill(ExplorerTheme.surface.opacity(0.92))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 30, style: .continuous)
+                        .stroke(ExplorerTheme.goldHighlightStart.opacity(0.3), lineWidth: 1.1)
+                )
+        )
+    }
+}
+
+private struct StatusMessageView: View {
+    let status: WebhookTestState
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: statusIcon)
+                .foregroundStyle(status.isError ? ExplorerTheme.danger : ExplorerTheme.success)
+            Text(status.message)
+                .font(.explorer(.caption))
+                .foregroundStyle(status.isError ? ExplorerTheme.danger : ExplorerTheme.textSecondary)
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill((status.isError ? ExplorerTheme.danger : ExplorerTheme.success).opacity(0.12))
+        )
     }
 
-    private func statusIcon(for status: WebhookTestState) -> String {
+    private var statusIcon: String {
         if status.isLoading {
             return "hourglass"
         }
@@ -221,60 +398,91 @@ private struct AgentEditorCard: View {
     }
 }
 
-private struct ToolSelectionGrid: View {
-    @Binding var selection: [AgentTool]
-
-    private let columns = [GridItem(.adaptive(minimum: 150), spacing: 8)]
+private struct ToolEditor: View {
+    let title: String
+    @Binding var tools: [AgentTool]
+    @State private var draftName: String = ""
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Aktive Tools")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 12) {
+            Text(title)
+                .font(.explorer(.footnote, weight: .semibold))
+                .foregroundStyle(ExplorerTheme.textSecondary)
+                .textCase(.uppercase)
+                .tracking(0.6)
 
-            LazyVGrid(columns: columns, spacing: 8) {
-                ForEach(AgentTool.allCases) { tool in
-                    let isSelected = selection.contains(tool)
-                    Button {
-                        toggle(tool, isSelected: isSelected)
-                    } label: {
+            HStack(spacing: 12) {
+                TextField("Tool hinzufügen", text: $draftName)
+                    .textInputAutocapitalization(.never)
+                    .disableAutocorrection(true)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .fill(ExplorerTheme.surface.opacity(0.85))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .stroke(ExplorerTheme.goldHighlightStart.opacity(0.3), lineWidth: 1)
+                    )
+                    .font(.explorer(.callout))
+                    .foregroundStyle(ExplorerTheme.textPrimary)
+
+                Button("Hinzufügen") {
+                    addTool()
+                }
+                .buttonStyle(ExplorerSecondaryButtonStyle())
+                .disabled(draftName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+
+            if tools.isEmpty {
+                Text("Noch keine Tools hinterlegt. Füge Begriffe wie „Websuche“ oder „Notion API“ hinzu.")
+                    .font(.explorer(.caption))
+                    .foregroundStyle(ExplorerTheme.textMuted)
+            } else {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: 10)], spacing: 10) {
+                    ForEach(tools) { tool in
                         HStack(spacing: 8) {
-                            Image(systemName: tool.iconName)
-                                .font(.subheadline)
-                            Text(tool.title)
-                                .font(.subheadline)
+                            Text(tool.name)
+                                .font(.explorer(.caption, weight: .medium))
+                                .foregroundStyle(ExplorerTheme.textPrimary)
                                 .lineLimit(1)
+                            Spacer(minLength: 0)
+                            Button {
+                                remove(tool)
+                            } label: {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundStyle(ExplorerTheme.textSecondary)
+                            }
+                            .buttonStyle(.plain)
                         }
-                        .padding(.horizontal, 12)
+                        .padding(.horizontal, 14)
                         .padding(.vertical, 10)
-                        .frame(maxWidth: .infinity)
                         .background(
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(isSelected ? Color.accentColor : Color(.secondarySystemBackground))
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .fill(ExplorerTheme.surfaceElevated.opacity(0.9))
                         )
                         .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(isSelected ? Color.accentColor : Color.gray.opacity(0.25), lineWidth: isSelected ? 0 : 1)
+                            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                                .stroke(ExplorerTheme.goldHighlightStart.opacity(0.28), lineWidth: 1)
                         )
-                        .foregroundStyle(isSelected ? Color.white : Color.primary)
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(tool.title)
-                    .accessibilityHint(tool.description)
                 }
             }
         }
-        .padding(.top, 4)
     }
 
-    private func toggle(_ tool: AgentTool, isSelected: Bool) {
-        var current = selection
-        if isSelected {
-            current.removeAll { $0 == tool }
-        } else {
-            current.append(tool)
+    private func addTool() {
+        let trimmed = draftName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        if !tools.contains(where: { $0.name.lowercased() == trimmed.lowercased() }) {
+            tools.append(AgentTool(name: trimmed))
         }
-        selection = AgentTool.allCases.filter { current.contains($0) }
+        draftName = ""
+    }
+
+    private func remove(_ tool: AgentTool) {
+        tools.removeAll { $0.id == tool.id }
     }
 }
 

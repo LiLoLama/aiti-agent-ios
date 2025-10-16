@@ -1,49 +1,43 @@
 import Foundation
 
-enum AgentTool: String, CaseIterable, Identifiable, Codable, Hashable {
-    case webSearch
-    case dataAnalysis
-    case automation
-    case webhook
+struct AgentTool: Identifiable, Codable, Hashable {
+    var id: UUID
+    var name: String
 
-    var id: String { rawValue }
+    init(id: UUID = UUID(), name: String) {
+        self.id = id
+        self.name = name
+    }
+}
 
-    var title: String {
-        switch self {
-        case .webSearch:
-            return "Websuche"
-        case .dataAnalysis:
-            return "Datenanalyse"
-        case .automation:
-            return "Automationen"
-        case .webhook:
-            return "Webhook"
+extension AgentTool {
+    init(from decoder: Decoder) throws {
+        let container = try? decoder.singleValueContainer()
+        if let rawValue = try? container?.decode(String.self) {
+            self.init(name: rawValue)
+            return
         }
+
+        let keyedContainer = try decoder.container(keyedBy: CodingKeys.self)
+        let id = try keyedContainer.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        let name = try keyedContainer.decode(String.self, forKey: .name)
+        self.init(id: id, name: name)
     }
 
-    var description: String {
-        switch self {
-        case .webSearch:
-            return "Findet aktuelle Informationen und Quellen im Web."
-        case .dataAnalysis:
-            return "Analysiert Dateien und strukturiert Daten."
-        case .automation:
-            return "Führt wiederkehrende Prozesse automatisiert aus."
-        case .webhook:
-            return "Kann externe Dienste über Webhooks ansprechen."
-        }
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(name, forKey: .name)
     }
 
-    var iconName: String {
-        switch self {
-        case .webSearch:
-            return "magnifyingglass"
-        case .dataAnalysis:
-            return "chart.bar"
-        case .automation:
-            return "gearshape.2"
-        case .webhook:
-            return "arrow.triangle.2.circlepath"
-        }
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case name
+    }
+}
+
+extension Array where Element == AgentTool {
+    func namesJoined() -> String {
+        map { $0.name }.joined(separator: " • ")
     }
 }

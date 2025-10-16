@@ -18,33 +18,30 @@ struct ChatDetailView: View {
         VStack(spacing: 0) {
             ChatHeaderView(agent: agent)
 
-            Divider()
-                .background(.white.opacity(0.1))
-
             ScrollViewReader { proxy in
-                ScrollView {
-                    LazyVStack(spacing: 16) {
+                ScrollView(showsIndicators: false) {
+                    LazyVStack(spacing: 20) {
                         ForEach(agent.conversation.messages) { message in
                             ChatBubble(message: message, agent: agent)
-                                .padding(.horizontal)
+                                .padding(.horizontal, 20)
+                                .padding(.top, message.author == .agent ? 0 : 6)
                         }
 
                         if pendingResponse {
                             TypingIndicatorView()
-                                .padding(.horizontal)
+                                .padding(.horizontal, 20)
                         }
 
                         Color.clear
                             .frame(height: 1)
                             .id(bottomID)
                     }
-                    .padding(.vertical, 24)
+                    .padding(.vertical, 28)
                 }
                 .scrollDismissesKeyboard(.interactively)
                 .dismissFocusOnInteract($isComposerFocused)
-                .background(Color(.systemBackground))
                 .onChange(of: agent.conversation.messages.count) {
-                    withAnimation(.easeInOut(duration: 0.3)) {
+                    withAnimation(.easeInOut(duration: 0.32)) {
                         proxy.scrollTo(bottomID, anchor: .bottom)
                     }
                 }
@@ -57,30 +54,24 @@ struct ChatDetailView: View {
             }
         }
         .safeAreaInset(edge: .bottom) {
-            VStack(spacing: 0) {
-                Divider()
-                MessageComposer(
-                    text: $draftedMessage,
-                    attachments: $attachments,
-                    onSend: { text, attachments in
-                        onSend(text, attachments)
-                        draftedMessage = ""
-                        self.attachments.removeAll()
-                    },
-                    onRequestFileAttachment: {
-                        showingFileImporter = true
-                    },
-                    onRequestAudioAttachment: {
-                        // Audio recording has been removed; the button remains for future use.
-                    },
-                    isFocused: $isComposerFocused
-                )
-                .padding(.horizontal)
-                .padding(.top, 12)
-                .padding(.bottom, 8)
-            }
-            .background(.thinMaterial)
+            MessageComposer(
+                text: $draftedMessage,
+                attachments: $attachments,
+                onSend: { text, attachments in
+                    onSend(text, attachments)
+                    draftedMessage = ""
+                    self.attachments.removeAll()
+                },
+                onRequestFileAttachment: { showingFileImporter = true },
+                onRequestAudioAttachment: {},
+                isFocused: $isComposerFocused
+            )
+            .padding(.horizontal, 20)
+            .padding(.top, 12)
+            .padding(.bottom, 18)
+            .background(.ultraThinMaterial)
         }
+        .explorerBackground()
         .fileImporter(
             isPresented: $showingFileImporter,
             allowedContentTypes: [.item],
@@ -174,31 +165,60 @@ private struct ChatHeaderView: View {
     let agent: AgentProfile
 
     var body: some View {
-        HStack(alignment: .center, spacing: 16) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 20)
-                    .fill(.ultraThinMaterial)
-                    .frame(width: 72, height: 72)
-                Image(systemName: agent.avatarSystemName)
-                    .font(.largeTitle)
+        VStack(alignment: .leading, spacing: 20) {
+            HStack(alignment: .center, spacing: 16) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .fill(ExplorerTheme.surfaceElevated.opacity(0.95))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                .stroke(ExplorerTheme.goldHighlightStart.opacity(0.3), lineWidth: 1.2)
+                        )
+                        .frame(width: 84, height: 84)
+
+                    Image(systemName: agent.avatarSystemName)
+                        .font(.system(size: 38, weight: .medium))
+                        .foregroundStyle(ExplorerTheme.goldGradient)
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(agent.name)
+                        .font(.explorer(.title3, weight: .semibold))
+                        .foregroundStyle(ExplorerTheme.textPrimary)
+
+                    Text(agent.role)
+                        .font(.explorer(.footnote))
+                        .foregroundStyle(ExplorerTheme.textSecondary)
+
+                    Label(agent.status.description, systemImage: "circle.fill")
+                        .font(.explorer(.caption, weight: .semibold))
+                        .labelStyle(.titleAndIcon)
+                        .foregroundStyle(ExplorerTheme.success)
+                }
+
+                Spacer()
             }
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(agent.name)
-                    .font(.title3.bold())
-                Text(agent.role)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                Label(agent.status.description, systemImage: "checkmark.circle.fill")
-                    .font(.caption)
-                    .foregroundStyle(Color.green)
-                AgentToolBadges(tools: agent.tools)
+            if !agent.description.isEmpty {
+                Text(agent.description)
+                    .font(.explorer(.footnote))
+                    .foregroundStyle(ExplorerTheme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
-            Spacer()
+            AgentToolBadges(tools: agent.tools)
         }
-        .padding([.horizontal, .top])
-        .padding(.bottom, 12)
+        .padding(26)
+        .background(
+            RoundedRectangle(cornerRadius: 32, style: .continuous)
+                .fill(ExplorerTheme.surface.opacity(0.9))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 32, style: .continuous)
+                        .stroke(ExplorerTheme.goldHighlightStart.opacity(0.35), lineWidth: 1.1)
+                )
+        )
+        .padding(.horizontal, 20)
+        .padding(.top, 18)
     }
 }
 
@@ -210,24 +230,28 @@ private struct AgentToolBadges: View {
             EmptyView()
         } else {
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
+                HStack(spacing: 10) {
                     ForEach(tools) { tool in
-                        Label(tool.title, systemImage: tool.iconName)
-                            .font(.caption2)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .fill(Color.accentColor.opacity(0.12))
-                            )
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 10)
-                                    .stroke(Color.accentColor.opacity(0.2))
-                            )
+                        HStack(spacing: 8) {
+                            Image(systemName: "wand.and.stars")
+                                .font(.explorer(.caption2, weight: .semibold))
+                            Text(tool.name)
+                                .font(.explorer(.caption))
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(
+                            Capsule()
+                                .fill(ExplorerTheme.goldGradient.opacity(0.16))
+                        )
+                        .overlay(
+                            Capsule()
+                                .stroke(ExplorerTheme.goldHighlightStart.opacity(0.55), lineWidth: 1)
+                        )
+                        .foregroundStyle(ExplorerTheme.textPrimary)
                     }
                 }
             }
-            .padding(.top, 6)
         }
     }
 }
@@ -237,20 +261,23 @@ private struct ChatBubble: View {
     let agent: AgentProfile
 
     var body: some View {
-        HStack(alignment: .bottom, spacing: 12) {
+        HStack(alignment: .bottom, spacing: 16) {
             if message.author == .agent {
                 avatar
             } else {
                 Spacer(minLength: 48)
             }
 
-            VStack(alignment: message.author == .agent ? .leading : .trailing, spacing: 10) {
+            VStack(alignment: message.author == .agent ? .leading : .trailing, spacing: 12) {
                 if !message.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                     Text(message.content)
-                        .padding(16)
-                        .foregroundStyle(message.author == .agent ? .primary : Color.white)
+                        .font(.explorer(.body))
+                        .foregroundStyle(message.author == .agent ? ExplorerTheme.textPrimary : Color.black)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 16)
                         .background(bubbleBackground)
-                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                        .shadow(color: bubbleShadow, radius: 14, x: 0, y: 10)
                 }
 
                 if !message.attachments.isEmpty {
@@ -258,8 +285,8 @@ private struct ChatBubble: View {
                 }
 
                 Text(message.timeLabel)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .font(.explorer(.caption2))
+                    .foregroundStyle(ExplorerTheme.textMuted)
             }
 
             if message.author == .user {
@@ -274,19 +301,40 @@ private struct ChatBubble: View {
     private var avatar: some View {
         ZStack {
             Circle()
-                .fill(.ultraThinMaterial)
-                .frame(width: 36, height: 36)
+                .fill(ExplorerTheme.surfaceElevated.opacity(0.95))
+                .frame(width: 44, height: 44)
+                .overlay(
+                    Circle()
+                        .stroke(ExplorerTheme.goldHighlightStart.opacity(0.25), lineWidth: 1)
+                )
             Image(systemName: message.author == .agent ? agent.avatarSystemName : "person.fill")
-                .font(.subheadline)
+                .font(.explorer(.callout, weight: .semibold))
+                .foregroundStyle(message.author == .agent ? ExplorerTheme.goldGradient : ExplorerTheme.textPrimary)
         }
     }
 
     private var bubbleBackground: some ShapeStyle {
         if message.author == .agent {
-            return AnyShapeStyle(.thinMaterial)
+            return AnyShapeStyle(
+                LinearGradient(
+                    colors: [ExplorerTheme.surface.opacity(0.92), ExplorerTheme.surfaceElevated.opacity(0.96)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
         } else {
-            return AnyShapeStyle(LinearGradient(colors: [.blue, .purple], startPoint: .topLeading, endPoint: .bottomTrailing))
+            return AnyShapeStyle(
+                LinearGradient(
+                    colors: [ExplorerTheme.goldHighlightStart, ExplorerTheme.goldHighlightEnd],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
         }
+    }
+
+    private var bubbleShadow: Color {
+        message.author == .agent ? Color.black.opacity(0.28) : ExplorerTheme.goldHighlightEnd.opacity(0.32)
     }
 }
 
@@ -294,29 +342,41 @@ private struct AttachmentList: View {
     let attachments: [ChatAttachment]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             ForEach(attachments) { attachment in
-                HStack {
+                HStack(spacing: 12) {
                     Image(systemName: attachment.kind.iconName)
-                        .foregroundStyle(.secondary)
-                    VStack(alignment: .leading) {
+                        .foregroundStyle(ExplorerTheme.textSecondary)
+
+                    VStack(alignment: .leading, spacing: 4) {
                         Text(attachment.name)
-                            .font(.subheadline)
-                            .foregroundStyle(.primary)
+                            .font(.explorer(.footnote, weight: .medium))
+                            .foregroundStyle(ExplorerTheme.textPrimary)
+                            .lineLimit(1)
                         Text("\(attachment.formattedSize) • \(attachment.type)")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .font(.explorer(.caption2))
+                            .foregroundStyle(ExplorerTheme.textMuted)
+                            .lineLimit(1)
                     }
+
                     Spacer()
+
                     if let duration = attachment.durationSeconds {
                         Text("\(duration) s")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
+                            .font(.explorer(.caption2, weight: .semibold))
+                            .foregroundStyle(ExplorerTheme.textSecondary)
                     }
                 }
-                .padding(12)
-                .background(.ultraThinMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+                .background(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .fill(ExplorerTheme.surfaceElevated.opacity(0.85))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(ExplorerTheme.goldHighlightStart.opacity(0.25), lineWidth: 1)
+                )
             }
         }
     }
@@ -326,25 +386,43 @@ private struct TypingIndicatorView: View {
     @State private var animate = false
 
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 14) {
             Circle()
-                .fill(.thinMaterial)
-                .frame(width: 36, height: 36)
-                .overlay(Image(systemName: "bolt.horizontal.fill").font(.subheadline))
+                .fill(ExplorerTheme.surfaceElevated.opacity(0.9))
+                .frame(width: 42, height: 42)
+                .overlay(Image(systemName: "bolt.horizontal.fill").font(.explorer(.caption, weight: .semibold)))
 
-            HStack(spacing: 6) {
+            HStack(spacing: 8) {
                 ForEach(0..<3) { index in
                     Circle()
-                        .fill(.secondary)
-                        .frame(width: 8, height: 8)
+                        .fill(ExplorerTheme.textSecondary)
+                        .frame(width: 10, height: 10)
                         .scaleEffect(animate ? 1.0 : 0.4)
-                        .animation(.easeInOut(duration: 0.6).repeatForever().delay(Double(index) * 0.12), value: animate)
+                        .animation(
+                            .easeInOut(duration: 0.6)
+                                .repeatForever()
+                                .delay(Double(index) * 0.12),
+                            value: animate
+                        )
                 }
             }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 12)
+            .background(
+                Capsule()
+                    .fill(ExplorerTheme.surface.opacity(0.92))
+            )
         }
-        .padding(16)
-        .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .padding(.horizontal, 18)
+        .padding(.vertical, 12)
+        .background(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(ExplorerTheme.surface.opacity(0.88))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(ExplorerTheme.goldHighlightStart.opacity(0.2), lineWidth: 1)
+        )
         .onAppear { animate = true }
     }
 }
@@ -362,10 +440,10 @@ private struct MessageComposer: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 12) {
             if !attachments.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
+                    HStack(spacing: 12) {
                         ForEach(attachments) { attachment in
                             AttachmentComposerChip(attachment: attachment) {
                                 removeAttachment(attachment)
@@ -376,39 +454,61 @@ private struct MessageComposer: View {
                 }
             }
 
-            HStack(alignment: .bottom, spacing: 12) {
+            HStack(alignment: .bottom, spacing: 14) {
                 Button(action: onRequestFileAttachment) {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.title3)
-                        .foregroundStyle(Color.accentColor)
-                        .padding(12)
+                    Image(systemName: "paperclip.circle.fill")
+                        .font(.system(size: 26, weight: .semibold))
+                        .foregroundStyle(ExplorerTheme.goldGradient)
+                        .frame(width: 48, height: 48)
                         .background(
                             Circle()
-                                .fill(Color.accentColor.opacity(0.12))
+                                .fill(ExplorerTheme.surfaceElevated.opacity(0.85))
+                        )
+                        .overlay(
+                            Circle()
+                                .stroke(ExplorerTheme.goldHighlightStart.opacity(0.35), lineWidth: 1)
                         )
                 }
                 .accessibilityLabel("Datei hinzufügen")
+
+                Button(action: onRequestAudioAttachment) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "mic.fill")
+                            .font(.explorer(.callout, weight: .semibold))
+                            .foregroundStyle(Color.white)
+                        WaveformBars()
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
+                    .background(
+                        Capsule()
+                            .fill(LinearGradient(colors: [Color(red: 1.0, green: 0.58, blue: 0.7), Color(red: 1.0, green: 0.32, blue: 0.52)], startPoint: .leading, endPoint: .trailing))
+                    )
+                    .overlay(
+                        Capsule()
+                            .stroke(Color.white.opacity(0.35), lineWidth: 1)
+                    )
+                    .shadow(color: Color(red: 1.0, green: 0.32, blue: 0.52).opacity(0.35), radius: 12, x: 0, y: 8)
+                }
+                .accessibilityLabel("Audio aufnehmen")
 
                 TextField("Nachricht schreiben …", text: $text, axis: .vertical)
                     .lineLimit(1...6)
                     .textInputAutocapitalization(.sentences)
                     .disableAutocorrection(false)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
-                    .background(RoundedRectangle(cornerRadius: 16).fill(Color(.secondarySystemBackground)))
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 14)
+                    .background(
+                        RoundedRectangle(cornerRadius: 22, style: .continuous)
+                            .fill(ExplorerTheme.surface.opacity(0.85))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 22, style: .continuous)
+                            .stroke(ExplorerTheme.goldHighlightStart.opacity(isFocused.wrappedValue ? 0.6 : 0.25), lineWidth: 1.2)
+                    )
+                    .font(.explorer(.callout))
+                    .foregroundStyle(ExplorerTheme.textPrimary)
                     .focused(isFocused)
-
-                Button(action: onRequestAudioAttachment) {
-                    Image(systemName: "mic.fill")
-                        .font(.title3)
-                        .foregroundStyle(Color.accentColor)
-                        .padding(12)
-                        .background(
-                            Circle()
-                                .fill(Color.accentColor.opacity(0.12))
-                        )
-                }
-                .accessibilityLabel("Audio hinzufügen")
 
                 Button {
                     let message = trimmedText
@@ -418,15 +518,29 @@ private struct MessageComposer: View {
                     isFocused.wrappedValue = false
                 } label: {
                     Image(systemName: "paperplane.fill")
-                        .font(.title3.bold())
-                        .foregroundStyle(Color.white)
-                        .padding(12)
-                        .background(Circle().fill(Color.accentColor))
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundStyle(Color.black)
+                        .frame(width: 52, height: 52)
+                        .background(
+                            Circle()
+                                .fill(ExplorerTheme.goldGradient)
+                        )
+                        .shadow(color: ExplorerTheme.goldHighlightEnd.opacity(0.45), radius: 18, x: 0, y: 12)
                 }
                 .disabled(trimmedText.isEmpty && attachments.isEmpty)
+                .opacity(trimmedText.isEmpty && attachments.isEmpty ? 0.55 : 1)
             }
         }
-        .animation(.easeInOut(duration: 0.2), value: isFocused.wrappedValue)
+        .padding(18)
+        .background(
+            RoundedRectangle(cornerRadius: 32, style: .continuous)
+                .fill(Color.white.opacity(0.05))
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 32, style: .continuous)
+                .stroke(ExplorerTheme.goldHighlightStart.opacity(0.25), lineWidth: 1)
+        )
         .toolbar {
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
@@ -447,39 +561,71 @@ private struct AttachmentComposerChip: View {
     var onRemove: () -> Void
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 10) {
             Image(systemName: attachment.kind.iconName)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+                .font(.explorer(.caption, weight: .semibold))
+                .foregroundStyle(ExplorerTheme.textSecondary)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(attachment.name)
-                    .font(.footnote.weight(.medium))
+                    .font(.explorer(.caption, weight: .medium))
                     .lineLimit(1)
+                    .foregroundStyle(ExplorerTheme.textPrimary)
                 Text(attachment.formattedSize)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .font(.explorer(.caption2))
+                    .foregroundStyle(ExplorerTheme.textMuted)
             }
-
-            Spacer(minLength: 0)
 
             Button(action: onRemove) {
                 Image(systemName: "xmark.circle.fill")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
+                    .font(.explorer(.caption))
+                    .foregroundStyle(ExplorerTheme.textSecondary)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Anhang entfernen")
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
         .background(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color(.secondarySystemBackground))
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(ExplorerTheme.surface.opacity(0.85))
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .stroke(Color(.separator), lineWidth: 0.5)
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .stroke(ExplorerTheme.goldHighlightStart.opacity(0.25), lineWidth: 1)
         )
     }
+}
+
+private struct WaveformBars: View {
+    @State private var phase: CGFloat = 0
+
+    var body: some View {
+        HStack(spacing: 3) {
+            ForEach(0..<5) { index in
+                Capsule()
+                    .fill(Color.white.opacity(0.9))
+                    .frame(width: 3, height: barHeight(for: index))
+            }
+        }
+        .onAppear {
+            withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
+                phase = 1
+            }
+        }
+    }
+
+    private func barHeight(for index: Int) -> CGFloat {
+        let base: CGFloat = 10
+        let variation: CGFloat = [6, 14, 20, 14, 6][index]
+        return base + variation * abs(sin(Double(phase) + Double(index)))
+    }
+}
+
+#Preview {
+    ChatDetailView(
+        agent: SampleData.previewUser.agents.first!,
+        draftedMessage: .constant(""),
+        onSend: { _, _ in },
+        pendingResponse: true
+    )
 }
