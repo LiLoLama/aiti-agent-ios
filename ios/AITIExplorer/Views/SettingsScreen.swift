@@ -165,7 +165,7 @@ struct SettingsScreen: View {
         @ViewBuilder content: @escaping (Selection) -> Content
     ) -> some View where Selection: Identifiable {
         LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
-            ForEach(options) { option in
+            ForEach(options, id: \.self) { option in
                 let isSelected = option == selection.wrappedValue
                 Button {
                     selection.wrappedValue = option
@@ -183,7 +183,15 @@ struct SettingsScreen: View {
                     .padding(.horizontal, 16)
                     .background(
                         RoundedRectangle(cornerRadius: 18, style: .continuous)
-                            .fill(isSelected ? ExplorerTheme.goldGradient.opacity(0.18) : ExplorerTheme.secondaryCardBackground(for: appState.settings.colorScheme.preferredScheme ?? .dark))
+                            .fill(
+                                isSelected
+                                    ? AnyShapeStyle(ExplorerTheme.goldGradient.opacity(0.18))
+                                    : AnyShapeStyle(
+                                        ExplorerTheme.secondaryCardBackground(
+                                            for: appState.settings.colorScheme.preferredScheme ?? .dark
+                                        )
+                                    )
+                            )
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: 18, style: .continuous)

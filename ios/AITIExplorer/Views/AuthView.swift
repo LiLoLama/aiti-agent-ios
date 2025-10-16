@@ -202,7 +202,11 @@ struct AuthView: View {
                 .frame(maxWidth: .infinity)
                 .background(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .fill(isSelected ? ExplorerTheme.goldGradient.opacity(0.25) : Color.white.opacity(0.04))
+                        .fill(
+                            isSelected
+                                ? AnyShapeStyle(ExplorerTheme.goldGradient.opacity(0.25))
+                                : AnyShapeStyle(Color.white.opacity(0.04))
+                        )
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 18, style: .continuous)
