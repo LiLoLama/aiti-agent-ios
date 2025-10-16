@@ -776,10 +776,10 @@ export function ProfilePage() {
                     />
                   </div>
                   <div>
-                    <label className="text-xs font-medium uppercase tracking-[0.35em] text-white/40">Über dich</label>
+                    <label className="text-xs font-medium uppercase tracking-[0.35em] text-white/40">Beschreibung</label>
                     <textarea
                       className="mt-2 min-h-[120px] w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white focus:border-brand-gold focus:outline-none focus:ring-2 focus:ring-brand-gold/30"
-                      placeholder="Welche Projekte setzt du mit dem AITI Agent um?"
+                      placeholder="Beschreibe dich oder deine Arbeitsweise mit dem AITI Agent."
                       value={bio}
                       onChange={(event) => setBio(event.target.value)}
                     />
@@ -798,10 +798,20 @@ export function ProfilePage() {
                           </>
                         )}
                       </p>
+                      <p className="mt-1 text-xs text-white/60">
+                        {currentUser.isActive
+                          ? 'Dein Account ist aktiv und kann Agents sowie Chats verwalten.'
+                          : 'Dein Account ist aktuell deaktiviert. Wende dich an den Workspace-Admin für Unterstützung.'}
+                      </p>
                     </div>
                     <div className="rounded-2xl border border-white/10 bg-white/5 p-4 sm:col-span-2">
                       <p className="text-xs uppercase tracking-[0.35em] text-white/40">Agents erstellt</p>
                       <p className="mt-2 text-sm font-semibold text-white">{userAgents.length}</p>
+                      <p className="mt-1 text-xs text-white/60">
+                        {userAgents.length === 1
+                          ? 'Du hast bisher einen Agent angelegt.'
+                          : `Du hast bisher ${userAgents.length} Agents angelegt.`}
+                      </p>
                     </div>
                   </div>
                   <div className="rounded-2xl border border-white/10 bg-white/5 p-4">

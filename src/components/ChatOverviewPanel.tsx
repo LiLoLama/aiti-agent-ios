@@ -77,12 +77,6 @@ export function ChatOverviewPanel({
               <p className="mt-2 text-sm text-white/60">
                 Wähle einen Agenten aus, um den gemeinsamen Chat zu öffnen.
               </p>
-              <button
-                onClick={onCreateAgent}
-                className="mt-4 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-brand-gold via-brand-deep to-brand-gold px-4 py-2 text-xs font-semibold text-surface-base shadow-glow transition hover:opacity-90"
-              >
-                <PlusIcon className="h-4 w-4" /> Neuen Agenten anlegen
-              </button>
             </div>
             <button
               onClick={onCloseMobile}
@@ -140,6 +134,15 @@ export function ChatOverviewPanel({
               </button>
             ))
           )}
+        </div>
+        <div className="border-t border-white/10 px-6 py-5">
+          <button
+            onClick={onCreateAgent}
+            className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-brand-gold via-brand-deep to-brand-gold px-4 py-3 text-sm font-semibold text-surface-base shadow-glow transition hover:opacity-90"
+          >
+            <PlusIcon className="h-5 w-5" />
+            Neuen Agenten anlegen
+          </button>
         </div>
       </div>
     ),
