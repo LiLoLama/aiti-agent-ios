@@ -601,11 +601,10 @@ private struct AudioRecorderSheet: View {
     #if canImport(AVFAudio)
     @available(iOS 17, *)
     private func updatePermissionUsingApplication() {
-        let application = AVAudioApplication.shared
-        switch application.recordPermission {
+        switch AVAudioApplication.shared.recordPermission {
         case .undetermined:
             permissionStatus = .undetermined
-            application.requestRecordPermission { granted in
+            AVAudioApplication.requestRecordPermission { granted in
                 DispatchQueue.main.async {
                     permissionStatus = granted ? .granted : .denied
                 }
