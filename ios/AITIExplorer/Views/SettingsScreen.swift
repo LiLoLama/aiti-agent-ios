@@ -18,14 +18,7 @@ struct SettingsScreen: View {
             .navigationTitle("Einstellungen")
             .toolbar { toolbarItems }
             .scrollDismissesKeyboard(.interactively)
-            .onTapGesture {
-                focusedField = nil
-            }
-            .simultaneousGesture(DragGesture(minimumDistance: 12).onChanged { value in
-                if value.translation.height > 16 {
-                    focusedField = nil
-                }
-            })
+            .dismissFocusOnInteract($focusedField)
         }
         .onAppear {
             viewModel.attach(appState: appState)

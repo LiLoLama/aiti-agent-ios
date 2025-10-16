@@ -36,9 +36,7 @@ struct ChatDetailView: View {
                     .padding(.vertical, 24)
                 }
                 .scrollDismissesKeyboard(.interactively)
-                .onTapGesture {
-                    isComposerFocused = false
-                }
+                .dismissFocusOnInteract($isComposerFocused)
                 .background(Color(.systemBackground))
                 .onChange(of: agent.conversation.messages.count) { _ in
                     withAnimation(.easeInOut(duration: 0.3)) {

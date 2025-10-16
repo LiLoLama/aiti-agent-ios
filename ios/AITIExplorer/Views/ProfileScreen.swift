@@ -19,14 +19,7 @@ struct ProfileScreen: View {
             }
             .navigationTitle("Profil")
             .scrollDismissesKeyboard(.interactively)
-            .simultaneousGesture(TapGesture().onEnded {
-                focusedField = nil
-            })
-            .simultaneousGesture(DragGesture(minimumDistance: 12).onChanged { value in
-                if value.translation.height > 16 {
-                    focusedField = nil
-                }
-            })
+            .dismissFocusOnInteract($focusedField)
         }
         .toast(message: viewModel.toastMessage, isPresented: Binding(
             get: { viewModel.toastMessage != nil },

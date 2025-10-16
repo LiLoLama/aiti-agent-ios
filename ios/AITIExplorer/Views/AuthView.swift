@@ -48,14 +48,7 @@ struct AuthView: View {
         .padding()
         .background(LinearGradient(colors: [.black, Color(.sRGB, red: 0.1, green: 0.1, blue: 0.12, opacity: 1)], startPoint: .top, endPoint: .bottom))
         .scrollDismissesKeyboard(.interactively)
-        .onTapGesture {
-            focusedField = nil
-        }
-        .simultaneousGesture(DragGesture(minimumDistance: 12).onChanged { value in
-            if value.translation.height > 16 {
-                focusedField = nil
-            }
-        })
+        .dismissFocusOnInteract($focusedField)
         .onReceive(appState.$currentUser) { user in
             if user != nil {
                 viewModel.infoMessage = nil

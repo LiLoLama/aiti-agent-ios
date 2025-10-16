@@ -38,14 +38,7 @@ struct SearchResultsView: View {
             }
         }
         .scrollDismissesKeyboard(.interactively)
-        .onTapGesture {
-            queryFieldFocused = false
-        }
-        .simultaneousGesture(DragGesture(minimumDistance: 12).onChanged { value in
-            if value.translation.height > 16 {
-                queryFieldFocused = false
-            }
-        })
+        .dismissFocusOnInteract($queryFieldFocused)
         .navigationTitle("Chat durchsuchen")
     }
 }
