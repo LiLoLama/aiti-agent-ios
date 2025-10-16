@@ -1,8 +1,14 @@
 import SwiftUI
 
+private enum ProfileField: Hashable {
+    case name
+    case bio
+}
+
 struct ProfileScreen: View {
     @EnvironmentObject private var appState: AppState
     @StateObject private var viewModel = ProfileViewModel()
+    @FocusState private var focusedField: ProfileField?
 
     var body: some View {
         NavigationStack {
@@ -12,6 +18,8 @@ struct ProfileScreen: View {
                 sessionSection
             }
             .navigationTitle("Profil")
+            .scrollDismissesKeyboard(.interactively)
+            .dismissFocusOnInteract($focusedField)
         }
         .toast(message: viewModel.toastMessage, isPresented: Binding(
             get: { viewModel.toastMessage != nil },
@@ -25,12 +33,15 @@ struct ProfileScreen: View {
     private var profileSection: some View {
         Section(header: Text("Dein Profil")) {
             TextField("Name", text: $viewModel.draftName)
+                .focused($focusedField, equals: .name)
             TextField("Bio", text: $viewModel.draftBio, axis: .vertical)
                 .lineLimit(2...5)
+                .focused($focusedField, equals: .bio)
             Toggle("Aktiv", isOn: $viewModel.isActive)
 
             Button("Profil speichern") {
                 viewModel.saveProfile()
+                focusedField = nil
             }
         }
     }

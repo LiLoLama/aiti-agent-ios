@@ -4,12 +4,14 @@ struct SearchResultsView: View {
     @Binding var query: String
     let results: [ChatMessage]
     let isSearching: Bool
+    @FocusState private var queryFieldFocused: Bool
 
     var body: some View {
         List {
             Section(header: Text("Suche")) {
                 TextField("Nachrichten durchsuchen", text: $query)
                     .textFieldStyle(.roundedBorder)
+                    .focused($queryFieldFocused)
             }
 
             Section(header: Text("Ergebnisse")) {
@@ -35,6 +37,8 @@ struct SearchResultsView: View {
                 }
             }
         }
+        .scrollDismissesKeyboard(.interactively)
+        .dismissFocusOnInteract($queryFieldFocused)
         .navigationTitle("Chat durchsuchen")
     }
 }

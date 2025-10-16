@@ -5,14 +5,13 @@ struct ChatDetailView: View {
     @Binding var draftedMessage: String
     var onSend: (String) -> Void
     var pendingResponse: Bool
-    var onShowSearch: () -> Void
 
     @Namespace private var bottomID
     @FocusState private var isComposerFocused: Bool
 
     var body: some View {
         VStack(spacing: 0) {
-            ChatHeaderView(agent: agent, onShowSearch: onShowSearch)
+            ChatHeaderView(agent: agent)
 
             Divider()
                 .background(.white.opacity(0.1))
@@ -36,6 +35,8 @@ struct ChatDetailView: View {
                     }
                     .padding(.vertical, 24)
                 }
+                .scrollDismissesKeyboard(.interactively)
+                .dismissFocusOnInteract($isComposerFocused)
                 .background(Color(.systemBackground))
                 .onChange(of: agent.conversation.messages.count) { _ in
                     withAnimation(.easeInOut(duration: 0.3)) {
@@ -69,7 +70,6 @@ struct ChatDetailView: View {
 
 private struct ChatHeaderView: View {
     let agent: AgentProfile
-    var onShowSearch: () -> Void
 
     var body: some View {
         HStack(alignment: .center, spacing: 16) {
@@ -87,45 +87,15 @@ private struct ChatHeaderView: View {
                 Text(agent.role)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-                Label(agent.status.description, systemImage: statusIcon)
+                Label(agent.status.description, systemImage: "checkmark.circle.fill")
                     .font(.caption)
-                    .foregroundStyle(statusColor)
+                    .foregroundStyle(Color.green)
             }
 
             Spacer()
-
-            Button(action: onShowSearch) {
-                Image(systemName: "magnifyingglass")
-                    .font(.title3)
-                    .padding(10)
-                    .background(.ultraThinMaterial)
-                    .clipShape(Circle())
-            }
         }
         .padding([.horizontal, .top])
         .padding(.bottom, 12)
-    }
-
-    private var statusIcon: String {
-        switch agent.status {
-        case .online:
-            return "circle.fill"
-        case .offline:
-            return "circle"
-        case .busy:
-            return "clock.fill"
-        }
-    }
-
-    private var statusColor: Color {
-        switch agent.status {
-        case .online:
-            return .green
-        case .offline:
-            return .gray
-        case .busy:
-            return .orange
-        }
     }
 }
 
@@ -255,35 +225,14 @@ private struct MessageComposer: View {
 
     var body: some View {
         HStack(alignment: .bottom, spacing: 12) {
-            ZStack(alignment: .topLeading) {
-                if trimmedText.isEmpty {
-                    Text("Nachricht schreiben …")
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 22)
-                        .padding(.vertical, 18)
-                }
-
-                TextEditor(text: $text)
-                    .frame(minHeight: 44, maxHeight: 120)
-                    .scrollContentBackground(.hidden)
-                    .focused(isFocused)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
-            }
-            .background(RoundedRectangle(cornerRadius: 16).fill(Color(.secondarySystemBackground)))
-
-            if isFocused.wrappedValue {
-                Button {
-                    isFocused.wrappedValue = false
-                } label: {
-                    Image(systemName: "keyboard.chevron.compact.down")
-                        .font(.title3)
-                        .padding(10)
-                        .background(RoundedRectangle(cornerRadius: 12).fill(Color(.secondarySystemBackground)))
-                }
-                .accessibilityLabel("Tastatur schließen")
-                .transition(.opacity.combined(with: .scale))
-            }
+            TextField("Nachricht schreiben …", text: $text, axis: .vertical)
+                .lineLimit(1...6)
+                .textInputAutocapitalization(.sentences)
+                .disableAutocorrection(false)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(RoundedRectangle(cornerRadius: 16).fill(Color(.secondarySystemBackground)))
+                .focused(isFocused)
 
             Button {
                 let message = trimmedText
@@ -317,7 +266,6 @@ private struct MessageComposer: View {
         agent: SampleData.previewUser.agents.first!,
         draftedMessage: .constant(""),
         onSend: { _ in },
-        pendingResponse: true,
-        onShowSearch: {}
+        pendingResponse: true
     )
 }

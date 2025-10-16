@@ -1,21 +1,12 @@
 import Foundation
 
-enum AgentStatus: String, Codable, CaseIterable, Identifiable {
+enum AgentStatus: String, Codable, Identifiable {
     case online
-    case offline
-    case busy
 
     var id: String { rawValue }
 
     var description: String {
-        switch self {
-        case .online:
-            return "Verfügbar"
-        case .offline:
-            return "Offline"
-        case .busy:
-            return "Beschäftigt"
-        }
+        "Verfügbar"
     }
 }
 

@@ -708,14 +708,11 @@ export function ChatPage() {
           <ChatHeader
             agentName={activeAgentName}
             agentRole={activeAgentRole}
-            agentStatus="online"
             onOpenOverview={() => setMobileWorkspaceOpen(true)}
             agentAvatar={activeAgentAvatar}
             userName={currentUser?.name}
             userAvatar={accountAvatar}
             onOpenProfile={() => navigate('/profile')}
-            onToggleSearch={() => setSearchOpen((prev) => !prev)}
-            isSearchOpen={isSearchOpen}
           />
 
           {isSearchOpen && (
@@ -733,10 +730,10 @@ export function ChatPage() {
             </div>
           )}
 
-          <div className="hidden items-center justify-between px-4 pt-4 md:px-6 lg:flex">
+          <div className="flex items-center justify-between px-4 pt-4 md:px-6">
             <button
               onClick={() => setWorkspaceCollapsed((prev) => !prev)}
-              className="inline-flex items-center justify-center rounded-full border border-white/10 bg-white/[0.02] p-2 text-white/60 transition hover:bg-white/10"
+              className="hidden items-center justify-center rounded-full border border-white/10 bg-white/[0.02] p-2 text-white/60 transition hover:bg-white/10 lg:inline-flex"
               aria-label={isWorkspaceCollapsed ? 'Workspace anzeigen' : 'Workspace ausblenden'}
             >
               {isWorkspaceCollapsed ? (
@@ -745,9 +742,9 @@ export function ChatPage() {
                 <ChevronDoubleLeftIcon className="h-5 w-5" />
               )}
             </button>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-1 items-center justify-end gap-3">
               {isSearchOpen && (
-                <div className="flex items-center gap-3 rounded-full border border-white/10 bg-white/[0.05] px-4 py-2">
+                <div className="hidden items-center gap-3 rounded-full border border-white/10 bg-white/[0.05] px-4 py-2 lg:flex">
                   <input
                     className="w-44 bg-transparent text-sm text-white placeholder:text-white/40 focus:outline-none"
                     placeholder="Im Chat suchen"

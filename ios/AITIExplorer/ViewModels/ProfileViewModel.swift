@@ -46,14 +46,6 @@ final class ProfileViewModel: ObservableObject {
         toastMessage = "Profil gespeichert"
     }
 
-    func toggleAgent(_ agent: AgentProfile) {
-        guard let index = agents.firstIndex(where: { $0.id == agent.id }) else { return }
-        var updated = agent
-        updated.status = agent.status == .online ? .offline : .online
-        agents[index] = updated
-        saveAgentChanges()
-    }
-
     func addAgent(name: String, role: String, webhookURLString: String) {
         guard !name.isEmpty else { return }
         let agentId = UUID()

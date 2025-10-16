@@ -7,6 +7,7 @@ import {
 import {
   ChangeEvent,
   FormEvent,
+  KeyboardEvent,
   useCallback,
   useEffect,
   useMemo,
@@ -73,6 +74,7 @@ export function ChatInput({ onSendMessage, pushToTalkEnabled = true }: ChatInput
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
@@ -171,6 +173,16 @@ export function ChatInput({ onSendMessage, pushToTalkEnabled = true }: ChatInput
       }
     };
   }, [audioPreview]);
+
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) {
+      return;
+    }
+
+    textarea.style.height = '0px';
+    textarea.style.height = `${textarea.scrollHeight}px`;
+  }, [message]);
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files ?? []);
@@ -501,6 +513,15 @@ export function ChatInput({ onSendMessage, pushToTalkEnabled = true }: ChatInput
     }
   };
 
+  const handleMessageKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      if (canSubmit && !isSubmitting) {
+        event.currentTarget.form?.requestSubmit();
+      }
+    }
+  };
+
   const isRecordButtonDisabled =
     isAudioSending || (!isRecording && (!pushToTalkEnabled || recordingUnsupported));
 
@@ -621,12 +642,15 @@ export function ChatInput({ onSendMessage, pushToTalkEnabled = true }: ChatInput
         >
           <PaperClipIcon className="h-5 w-5 group-hover:text-white" />
         </button>
-        <input
+        <textarea
+          ref={textareaRef}
           name="message"
           value={message}
           onChange={(event) => setMessage(event.target.value)}
+          onKeyDown={handleMessageKeyDown}
           placeholder="Nachricht an den Agent eingeben..."
-          className="min-w-0 flex-1 bg-transparent px-2 text-sm text-white placeholder:text-white/30 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+          rows={1}
+          className="min-h-0 min-w-0 flex-1 resize-none overflow-y-auto bg-transparent px-2 text-sm leading-6 text-white placeholder:text-white/30 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
           disabled={isRecording}
         />
         <button

@@ -68,7 +68,7 @@ enum SampleData {
             name: "Explorer Produkt",
             role: "Produktmanager",
             description: "Analysiert Anforderungen und erstellt User Stories.",
-            status: .busy,
+            status: .online,
             avatarSystemName: "shippingbox.fill",
             conversation: conversation(agentId: id, title: "Feature Discovery"),
             webhookURL: URL(string: "https://hooks.aiti.ai/product")
@@ -82,7 +82,7 @@ enum SampleData {
             name: "Explorer Research",
             role: "Research Analyst",
             description: "Findet Antworten und fasst Ergebnisse prägnant zusammen.",
-            status: .offline,
+            status: .online,
             avatarSystemName: "chart.bar.fill",
             conversation: conversation(agentId: id, title: "Marktanalyse"),
             webhookURL: URL(string: "https://hooks.aiti.ai/research")
