@@ -180,7 +180,7 @@ export function ChatInput({ onSendMessage, pushToTalkEnabled = true }: ChatInput
       return;
     }
 
-    textarea.style.height = 'auto';
+    textarea.style.height = '0px';
     textarea.style.height = `${textarea.scrollHeight}px`;
   }, [message]);
 
@@ -650,7 +650,7 @@ export function ChatInput({ onSendMessage, pushToTalkEnabled = true }: ChatInput
           onKeyDown={handleMessageKeyDown}
           placeholder="Nachricht an den Agent eingeben..."
           rows={1}
-          className="min-h-[2.5rem] min-w-0 flex-1 resize-none overflow-y-auto bg-transparent px-2 text-sm text-white placeholder:text-white/30 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
+          className="min-h-0 min-w-0 flex-1 resize-none overflow-y-auto bg-transparent px-2 text-sm leading-6 text-white placeholder:text-white/30 focus:outline-none disabled:cursor-not-allowed disabled:opacity-60"
           disabled={isRecording}
         />
         <button

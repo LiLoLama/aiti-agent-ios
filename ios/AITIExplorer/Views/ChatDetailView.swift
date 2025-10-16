@@ -227,35 +227,14 @@ private struct MessageComposer: View {
 
     var body: some View {
         HStack(alignment: .bottom, spacing: 12) {
-            ZStack(alignment: .topLeading) {
-                if trimmedText.isEmpty {
-                    Text("Nachricht schreiben …")
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 22)
-                        .padding(.vertical, 18)
-                }
-
-                TextEditor(text: $text)
-                    .frame(minHeight: 44, maxHeight: 120)
-                    .scrollContentBackground(.hidden)
-                    .focused(isFocused)
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
-            }
-            .background(RoundedRectangle(cornerRadius: 16).fill(Color(.secondarySystemBackground)))
-
-            if isFocused.wrappedValue {
-                Button {
-                    isFocused.wrappedValue = false
-                } label: {
-                    Image(systemName: "keyboard.chevron.compact.down")
-                        .font(.title3)
-                        .padding(10)
-                        .background(RoundedRectangle(cornerRadius: 12).fill(Color(.secondarySystemBackground)))
-                }
-                .accessibilityLabel("Tastatur schließen")
-                .transition(.opacity.combined(with: .scale))
-            }
+            TextField("Nachricht schreiben …", text: $text, axis: .vertical)
+                .lineLimit(1...6)
+                .textInputAutocapitalization(.sentences)
+                .disableAutocorrection(false)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 8)
+                .background(RoundedRectangle(cornerRadius: 16).fill(Color(.secondarySystemBackground)))
+                .focused(isFocused)
 
             Button {
                 let message = trimmedText
