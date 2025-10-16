@@ -148,6 +148,12 @@ private struct ChatListRow: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
+                if !agent.tools.isEmpty {
+                    Text(agent.tools.map { $0.title }.joined(separator: " • "))
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
             }
 
             Spacer()

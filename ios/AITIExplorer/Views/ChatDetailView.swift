@@ -1,6 +1,9 @@
 import SwiftUI
 import UniformTypeIdentifiers
 import AVFoundation
+#if canImport(AVFAudio)
+import AVFAudio
+#endif
 
 struct ChatDetailView: View {
     let agent: AgentProfile
@@ -11,7 +14,8 @@ struct ChatDetailView: View {
     @Namespace private var bottomID
     @FocusState private var isComposerFocused: Bool
     @State private var attachments: [ChatAttachment] = []
-    @State private var showingAudioImporter = false
+    @State private var showingFileImporter = false
+    @State private var showingAudioRecorder = false
     @State private var attachmentError: String?
 
     var body: some View {
@@ -43,12 +47,12 @@ struct ChatDetailView: View {
                 .scrollDismissesKeyboard(.interactively)
                 .dismissFocusOnInteract($isComposerFocused)
                 .background(Color(.systemBackground))
-                .onChange(of: agent.conversation.messages.count) { _ in
+                .onChange(of: agent.conversation.messages.count) {
                     withAnimation(.easeInOut(duration: 0.3)) {
                         proxy.scrollTo(bottomID, anchor: .bottom)
                     }
                 }
-                .onChange(of: isComposerFocused) { focused in
+                .onChange(of: isComposerFocused) { _, focused in
                     guard focused else { return }
                     withAnimation(.easeInOut(duration: 0.25)) {
                         proxy.scrollTo(bottomID, anchor: .bottom)
@@ -67,8 +71,11 @@ struct ChatDetailView: View {
                         draftedMessage = ""
                         self.attachments.removeAll()
                     },
+                    onRequestFileAttachment: {
+                        showingFileImporter = true
+                    },
                     onRequestAudioAttachment: {
-                        showingAudioImporter = true
+                        showingAudioRecorder = true
                     },
                     isFocused: $isComposerFocused
                 )
@@ -79,13 +86,18 @@ struct ChatDetailView: View {
             .background(.thinMaterial)
         }
         .fileImporter(
-            isPresented: $showingAudioImporter,
-            allowedContentTypes: [.audio],
+            isPresented: $showingFileImporter,
+            allowedContentTypes: [.item],
             allowsMultipleSelection: false
         ) { result in
-            handleAudioImport(result: result)
+            handleFileImport(result: result)
         }
-        .alert("Audio konnte nicht hinzugefügt werden", isPresented: Binding(
+        .sheet(isPresented: $showingAudioRecorder) {
+            AudioRecorderSheet { attachment in
+                attachments.append(attachment)
+            }
+        }
+        .alert("Datei konnte nicht hinzugefügt werden", isPresented: Binding(
             get: { attachmentError != nil },
             set: { newValue in if !newValue { attachmentError = nil } }
         )) {
@@ -97,12 +109,12 @@ struct ChatDetailView: View {
 }
 
 private extension ChatDetailView {
-    func handleAudioImport(result: Result<[URL], Error>) {
+    func handleFileImport(result: Result<[URL], Error>) {
         switch result {
         case .success(let urls):
             guard let url = urls.first else { return }
             Task {
-                await processImportedAudio(from: url)
+                await processImportedFile(from: url)
             }
         case .failure(let error):
             Task { @MainActor in
@@ -111,7 +123,7 @@ private extension ChatDetailView {
         }
     }
 
-    func processImportedAudio(from originalURL: URL) async {
+    func processImportedFile(from originalURL: URL) async {
         let didAccess = originalURL.startAccessingSecurityScopedResource()
         defer {
             if didAccess {
@@ -134,21 +146,26 @@ private extension ChatDetailView {
             let attributes = try FileManager.default.attributesOfItem(atPath: destinationURL.path)
             let fileSize = (attributes[.size] as? NSNumber)?.intValue ?? 0
 
-            let asset = AVURLAsset(url: destinationURL)
-            let duration = try await asset.load(.duration)
-            let durationSeconds = Int(round(CMTimeGetSeconds(duration)))
-
             let resourceValues = try destinationURL.resourceValues(forKeys: [.contentTypeKey])
             let resolvedType = resourceValues.contentType ?? UTType(filenameExtension: destinationURL.pathExtension)
-            let typeDescription = resolvedType?.preferredMIMEType ?? resolvedType?.identifier ?? "public.audio"
+            let typeDescription = resolvedType?.preferredMIMEType ?? resolvedType?.identifier ?? "public.data"
+            let isAudioFile = resolvedType?.conforms(to: .audio) ?? false
+
+            var durationSeconds: Int?
+            if isAudioFile {
+                let asset = AVURLAsset(url: destinationURL)
+                let duration = try await asset.load(.duration)
+                let seconds = Int(round(CMTimeGetSeconds(duration)))
+                durationSeconds = seconds > 0 ? seconds : nil
+            }
 
             let attachment = ChatAttachment(
                 name: originalURL.lastPathComponent,
                 size: fileSize,
                 type: typeDescription,
                 url: destinationURL,
-                kind: .audio,
-                durationSeconds: durationSeconds > 0 ? durationSeconds : nil
+                kind: isAudioFile ? .audio : .file,
+                durationSeconds: durationSeconds
             )
 
             await MainActor.run {
@@ -184,12 +201,43 @@ private struct ChatHeaderView: View {
                 Label(agent.status.description, systemImage: "checkmark.circle.fill")
                     .font(.caption)
                     .foregroundStyle(Color.green)
+                AgentToolBadges(tools: agent.tools)
             }
 
             Spacer()
         }
         .padding([.horizontal, .top])
         .padding(.bottom, 12)
+    }
+}
+
+private struct AgentToolBadges: View {
+    let tools: [AgentTool]
+
+    var body: some View {
+        if tools.isEmpty {
+            EmptyView()
+        } else {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(tools) { tool in
+                        Label(tool.title, systemImage: tool.iconName)
+                            .font(.caption2)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .fill(Color.accentColor.opacity(0.12))
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10)
+                                    .stroke(Color.accentColor.opacity(0.2))
+                            )
+                    }
+                }
+            }
+            .padding(.top, 6)
+        }
     }
 }
 
@@ -314,6 +362,7 @@ private struct MessageComposer: View {
     @Binding var text: String
     @Binding var attachments: [ChatAttachment]
     var onSend: (String, [ChatAttachment]) -> Void
+    var onRequestFileAttachment: () -> Void
     var onRequestAudioAttachment: () -> Void
     var isFocused: FocusState<Bool>.Binding
 
@@ -337,6 +386,18 @@ private struct MessageComposer: View {
             }
 
             HStack(alignment: .bottom, spacing: 12) {
+                Button(action: onRequestFileAttachment) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.title3)
+                        .foregroundStyle(Color.accentColor)
+                        .padding(12)
+                        .background(
+                            Circle()
+                                .fill(Color.accentColor.opacity(0.12))
+                        )
+                }
+                .accessibilityLabel("Datei hinzufügen")
+
                 TextField("Nachricht schreiben …", text: $text, axis: .vertical)
                     .lineLimit(1...6)
                     .textInputAutocapitalization(.sentences)
@@ -383,6 +444,322 @@ private struct MessageComposer: View {
                 }
             }
         }
+    }
+}
+
+private struct AudioRecorderSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    var onComplete: (ChatAttachment) -> Void
+
+    @State private var permissionStatus: MicrophonePermissionStatus = .undetermined
+    @State private var isRecording = false
+    @State private var recorder: AVAudioRecorder?
+    @State private var recordedURL: URL?
+    @State private var recordingFileName: String = ""
+    @State private var recordedDuration: TimeInterval = 0
+    @State private var startDate: Date?
+    @State private var timer: Timer?
+    @State private var errorMessage: String?
+    @State private var didFinishSuccessfully = false
+
+    private enum MicrophonePermissionStatus {
+        case undetermined
+        case denied
+        case granted
+    }
+
+    private var formattedDuration: String {
+        let totalSeconds = max(0, Int(recordedDuration.rounded()))
+        let minutes = totalSeconds / 60
+        let seconds = totalSeconds % 60
+        return String(format: "%02d:%02d", minutes, seconds)
+    }
+
+    private var canAddRecording: Bool {
+        recordedURL != nil && !isRecording
+    }
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 24) {
+                Capsule()
+                    .fill(Color.secondary.opacity(0.3))
+                    .frame(width: 40, height: 4)
+                    .padding(.top, 12)
+
+                Text("Sprachaufnahme")
+                    .font(.headline)
+
+                if permissionStatus == .denied {
+                    VStack(spacing: 12) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.largeTitle)
+                            .foregroundStyle(Color.orange)
+                        Text("Bitte erlaube den Mikrofonzugriff in den Systemeinstellungen, um Sprachaufnahmen zu erstellen.")
+                            .multilineTextAlignment(.center)
+                            .font(.body)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.horizontal)
+                } else {
+                    VStack(spacing: 16) {
+                        Text(formattedDuration)
+                            .font(.system(size: 44, weight: .semibold, design: .monospaced))
+
+                        if !recordingFileName.isEmpty && !isRecording {
+                            Text(recordingFileName)
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Button {
+                            if isRecording {
+                                stopRecording()
+                            } else {
+                                startRecording()
+                            }
+                        } label: {
+                            ZStack {
+                                Circle()
+                                    .fill(isRecording ? Color.red : Color.accentColor)
+                                    .frame(width: 76, height: 76)
+                                    .shadow(color: (isRecording ? Color.red : Color.accentColor).opacity(0.35), radius: 12)
+                                Image(systemName: isRecording ? "stop.fill" : "mic.fill")
+                                    .font(.title)
+                                    .foregroundStyle(Color.white)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(isRecording ? "Aufnahme beenden" : "Aufnahme starten")
+
+                        Text(isRecording ? "Tippe erneut, um die Aufnahme zu beenden." : "Tippe, um eine neue Sprachaufnahme zu starten.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+                    }
+                }
+
+                Spacer()
+
+                HStack {
+                    Button("Abbrechen", role: .cancel) {
+                        cancelRecording()
+                    }
+                    .buttonStyle(.bordered)
+
+                    Spacer()
+
+                    Button("Hinzufügen") {
+                        finishRecording()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(!canAddRecording)
+                }
+                .padding(.bottom, 8)
+            }
+            .padding()
+            .navigationBarHidden(true)
+        }
+        .presentationDetents([.medium, .large])
+        .interactiveDismissDisabled(isRecording)
+        .onAppear {
+            prepareSession()
+        }
+        .onDisappear {
+            cleanup(deleteFile: !didFinishSuccessfully)
+        }
+        .alert("Aufnahme fehlgeschlagen", isPresented: Binding(
+            get: { errorMessage != nil },
+            set: { newValue in if !newValue { errorMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(errorMessage ?? "Unbekannter Fehler")
+        }
+    }
+
+    private func prepareSession() {
+        let session = AVAudioSession.sharedInstance()
+        do {
+            try session.setCategory(.playAndRecord, mode: .spokenAudio, options: [.defaultToSpeaker])
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+
+        #if canImport(AVFAudio)
+        if #available(iOS 17, *) {
+            updatePermissionUsingApplication()
+        } else {
+            updatePermission(using: session)
+        }
+        #else
+        updatePermission(using: session)
+        #endif
+    }
+
+    #if canImport(AVFAudio)
+    @available(iOS 17, *)
+    private func updatePermissionUsingApplication() {
+        switch AVAudioApplication.shared.recordPermission {
+        case .undetermined:
+            permissionStatus = .undetermined
+            AVAudioApplication.requestRecordPermission { granted in
+                DispatchQueue.main.async {
+                    permissionStatus = granted ? .granted : .denied
+                }
+            }
+        case .granted:
+            permissionStatus = .granted
+        case .denied:
+            permissionStatus = .denied
+        @unknown default:
+            permissionStatus = .denied
+        }
+    }
+    #endif
+
+    private func updatePermission(using session: AVAudioSession) {
+        let permission = session.recordPermission
+        switch permission {
+        case .undetermined:
+            permissionStatus = .undetermined
+            session.requestRecordPermission { granted in
+                DispatchQueue.main.async {
+                    permissionStatus = granted ? .granted : .denied
+                }
+            }
+        case .granted:
+            permissionStatus = .granted
+        case .denied:
+            permissionStatus = .denied
+        @unknown default:
+            permissionStatus = .denied
+        }
+    }
+
+    private func startRecording() {
+        guard permissionStatus == .granted else { return }
+        let session = AVAudioSession.sharedInstance()
+
+        do {
+            try session.setActive(true, options: [])
+
+            let formatter = DateFormatter()
+            formatter.dateFormat = "yyyyMMdd-HHmmss"
+            let baseName = "Sprachmemo-\(formatter.string(from: Date()))"
+            let fileURL = FileManager.default.temporaryDirectory
+                .appendingPathComponent(baseName)
+                .appendingPathExtension("m4a")
+
+            let settings: [String: Any] = [
+                AVFormatIDKey: Int(kAudioFormatMPEG4AAC),
+                AVSampleRateKey: 44_100,
+                AVNumberOfChannelsKey: 1,
+                AVEncoderAudioQualityKey: AVAudioQuality.high.rawValue
+            ]
+
+            recorder = try AVAudioRecorder(url: fileURL, settings: settings)
+            recorder?.prepareToRecord()
+            recorder?.record()
+
+            recordedURL = fileURL
+            recordingFileName = fileURL.lastPathComponent
+            recordedDuration = 0
+            isRecording = true
+            startDate = Date()
+            startTimer()
+        } catch {
+            errorMessage = error.localizedDescription
+            cleanup(deleteFile: true)
+        }
+    }
+
+    private func stopRecording() {
+        recorder?.stop()
+        recorder = nil
+        isRecording = false
+        stopTimer()
+        if let startDate {
+            recordedDuration = Date().timeIntervalSince(startDate)
+        }
+        startDate = nil
+
+        do {
+            try AVAudioSession.sharedInstance().setActive(false, options: [.notifyOthersOnDeactivation])
+        } catch {
+            // Ignored – the session can remain active if deactivation fails
+        }
+    }
+
+    private func cancelRecording() {
+        cleanup(deleteFile: true)
+        dismiss()
+    }
+
+    private func finishRecording() {
+        if isRecording {
+            stopRecording()
+        }
+
+        guard let url = recordedURL else { return }
+
+        do {
+            let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
+            let fileSize = (attributes[.size] as? NSNumber)?.intValue ?? 0
+            let seconds = max(1, Int(round(recordedDuration)))
+
+            let attachment = ChatAttachment(
+                name: recordingFileName.isEmpty ? url.lastPathComponent : recordingFileName,
+                size: fileSize,
+                type: "audio/m4a",
+                url: url,
+                kind: .audio,
+                durationSeconds: seconds
+            )
+
+            didFinishSuccessfully = true
+            onComplete(attachment)
+            cleanup(deleteFile: false)
+            dismiss()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func startTimer() {
+        timer?.invalidate()
+        timer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { _ in
+            if let startDate {
+                recordedDuration = Date().timeIntervalSince(startDate)
+            }
+        }
+        if let timer {
+            RunLoop.main.add(timer, forMode: .common)
+        }
+    }
+
+    private func stopTimer() {
+        timer?.invalidate()
+        timer = nil
+    }
+
+    private func cleanup(deleteFile: Bool) {
+        if isRecording {
+            recorder?.stop()
+        }
+        recorder = nil
+        isRecording = false
+        stopTimer()
+        startDate = nil
+
+        if deleteFile, let url = recordedURL {
+            try? FileManager.default.removeItem(at: url)
+        }
+
+        recordedURL = nil
+        recordingFileName = ""
+        recordedDuration = 0
     }
 }
 

@@ -42,7 +42,7 @@ final class ProfileViewModel: ObservableObject {
         toastMessage = "Profil gespeichert"
     }
 
-    func addAgent(name: String, role: String, webhookURLString: String) {
+    func addAgent(name: String, role: String, webhookURLString: String, tools: [AgentTool]) {
         guard !name.isEmpty else { return }
         let agentId = UUID()
         let conversation = Conversation(agentId: agentId, title: "Neuer Chat")
@@ -54,7 +54,8 @@ final class ProfileViewModel: ObservableObject {
             role: role.isEmpty ? "Individueller Agent" : role,
             description: "Neuer individueller Agent.",
             conversation: conversation,
-            webhookURL: webhookURL
+            webhookURL: webhookURL,
+            tools: tools
         )
         agents.append(agent)
         saveAgentChanges(showToast: true)
