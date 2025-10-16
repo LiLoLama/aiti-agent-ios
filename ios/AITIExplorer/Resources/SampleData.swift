@@ -57,7 +57,8 @@ enum SampleData {
             status: .online,
             avatarSystemName: "megaphone.fill",
             conversation: conversation(agentId: id, title: "Launch Kampagne"),
-            webhookURL: URL(string: "https://hooks.aiti.ai/marketing")
+            webhookURL: URL(string: "https://hooks.aiti.ai/marketing"),
+            tools: [.webSearch, .automation, .webhook]
         )
     }
 
@@ -71,7 +72,8 @@ enum SampleData {
             status: .online,
             avatarSystemName: "shippingbox.fill",
             conversation: conversation(agentId: id, title: "Feature Discovery"),
-            webhookURL: URL(string: "https://hooks.aiti.ai/product")
+            webhookURL: URL(string: "https://hooks.aiti.ai/product"),
+            tools: [.automation, .dataAnalysis]
         )
     }
 
@@ -85,7 +87,8 @@ enum SampleData {
             status: .online,
             avatarSystemName: "chart.bar.fill",
             conversation: conversation(agentId: id, title: "Marktanalyse"),
-            webhookURL: URL(string: "https://hooks.aiti.ai/research")
+            webhookURL: URL(string: "https://hooks.aiti.ai/research"),
+            tools: [.webSearch, .dataAnalysis]
         )
     }
 
@@ -115,8 +118,7 @@ enum SampleData {
         return AgentSettingsModel(
             colorScheme: .system,
             accentColor: .gold,
-            playSendSound: true,
-            notes: "Passe Layout und Verhalten deiner App nach deinen Vorlieben an."
+            playSendSound: true
         )
     }
 

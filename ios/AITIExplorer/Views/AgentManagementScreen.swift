@@ -15,7 +15,9 @@ struct AgentManagementScreen: View {
     @State private var newAgentName: String = ""
     @State private var newAgentRole: String = ""
     @State private var newAgentWebhook: String = ""
+    @State private var newAgentTools: [AgentTool] = []
     @State private var webhookStatus: [UUID: WebhookTestState] = [:]
+    @State private var agentPendingRemoval: AgentProfile?
     @FocusState private var focusedField: AgentField?
 
     var body: some View {
@@ -27,6 +29,26 @@ struct AgentManagementScreen: View {
         .toolbar { toolbarContent }
         .scrollDismissesKeyboard(.interactively)
         .dismissFocusOnInteract($focusedField)
+        .confirmationDialog(
+            "Agent entfernen?",
+            isPresented: Binding(
+                get: { agentPendingRemoval != nil },
+                set: { newValue in if !newValue { agentPendingRemoval = nil } }
+            ),
+            presenting: agentPendingRemoval
+        ) { agent in
+            Button("Agent „\(agent.name)“ löschen", role: .destructive) {
+                focusedField = nil
+                webhookStatus[agent.id] = nil
+                viewModel.removeAgent(agent)
+                agentPendingRemoval = nil
+            }
+            Button("Abbrechen", role: .cancel) {
+                agentPendingRemoval = nil
+            }
+        } message: { agent in
+            Text("Soll der Agent „\(agent.name)“ wirklich entfernt werden?")
+        }
         .onDisappear {
             viewModel.saveAgentChanges()
         }
@@ -49,8 +71,7 @@ struct AgentManagementScreen: View {
                         onTestWebhook: { testWebhook(for: agent) },
                         onRemove: {
                             focusedField = nil
-                            webhookStatus[agent.id] = nil
-                            viewModel.removeAgent(agent)
+                            agentPendingRemoval = agent
                         }
                     )
                 }
@@ -74,15 +95,19 @@ struct AgentManagementScreen: View {
                 .disableAutocorrection(true)
                 .focused($focusedField, equals: .newWebhook)
 
+            ToolSelectionGrid(selection: $newAgentTools)
+
             Button("Agent erstellen") {
                 viewModel.addAgent(
                     name: newAgentName.trimmingCharacters(in: .whitespacesAndNewlines),
                     role: newAgentRole.trimmingCharacters(in: .whitespacesAndNewlines),
-                    webhookURLString: newAgentWebhook
+                    webhookURLString: newAgentWebhook,
+                    tools: newAgentTools
                 )
                 newAgentName = ""
                 newAgentRole = ""
                 newAgentWebhook = ""
+                newAgentTools = []
                 focusedField = nil
             }
             .disabled(newAgentName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
@@ -156,10 +181,13 @@ private struct AgentEditorCard: View {
             .disableAutocorrection(true)
             .focused(focusedField, equals: .agentWebhook(agent.id))
 
+            ToolSelectionGrid(selection: $agent.tools)
+
             HStack {
                 Button("Webhook testen") {
                     onTestWebhook()
                 }
+                .buttonStyle(.bordered)
                 if status?.isLoading == true {
                     ProgressView()
                         .progressViewStyle(.circular)
@@ -168,6 +196,7 @@ private struct AgentEditorCard: View {
                 Button("Entfernen", role: .destructive) {
                     onRemove()
                 }
+                .buttonStyle(.bordered)
             }
 
             if let status {
@@ -189,6 +218,63 @@ private struct AgentEditorCard: View {
             return "hourglass"
         }
         return status.isError ? "exclamationmark.triangle.fill" : "checkmark.circle.fill"
+    }
+}
+
+private struct ToolSelectionGrid: View {
+    @Binding var selection: [AgentTool]
+
+    private let columns = [GridItem(.adaptive(minimum: 150), spacing: 8)]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Aktive Tools")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+
+            LazyVGrid(columns: columns, spacing: 8) {
+                ForEach(AgentTool.allCases) { tool in
+                    let isSelected = selection.contains(tool)
+                    Button {
+                        toggle(tool, isSelected: isSelected)
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: tool.iconName)
+                                .font(.subheadline)
+                            Text(tool.title)
+                                .font(.subheadline)
+                                .lineLimit(1)
+                        }
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 10)
+                        .frame(maxWidth: .infinity)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(isSelected ? Color.accentColor : Color(.secondarySystemBackground))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 12)
+                                .stroke(isSelected ? Color.accentColor : Color.gray.opacity(0.25), lineWidth: isSelected ? 0 : 1)
+                        )
+                        .foregroundStyle(isSelected ? Color.white : Color.primary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(tool.title)
+                    .accessibilityHint(tool.description)
+                }
+            }
+        }
+        .padding(.top, 4)
+    }
+
+    private func toggle(_ tool: AgentTool, isSelected: Bool) {
+        var current = selection
+        if isSelected {
+            current.removeAll { $0 == tool }
+        } else {
+            current.append(tool)
+        }
+        selection = AgentTool.allCases.filter { current.contains($0) }
     }
 }
 

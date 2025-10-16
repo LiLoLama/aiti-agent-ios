@@ -1,13 +1,8 @@
 import SwiftUI
 
-private enum SettingsField: Hashable {
-    case notes
-}
-
 struct SettingsScreen: View {
     @EnvironmentObject private var appState: AppState
     @StateObject private var viewModel = SettingsViewModel()
-    @FocusState private var focusedField: SettingsField?
 
     var body: some View {
         NavigationStack {
@@ -18,7 +13,6 @@ struct SettingsScreen: View {
             .navigationTitle("Einstellungen")
             .toolbar { toolbarItems }
             .scrollDismissesKeyboard(.interactively)
-            .dismissFocusOnInteract($focusedField)
         }
         .onAppear {
             viewModel.attach(appState: appState)
@@ -50,10 +44,6 @@ struct SettingsScreen: View {
     private var preferencesSection: some View {
         Section(header: Text("Chat Verhalten")) {
             Toggle("Sende-Sound abspielen", isOn: $viewModel.settings.playSendSound)
-
-            TextField("Notizen", text: $viewModel.settings.notes, axis: .vertical)
-                .lineLimit(3...6)
-                .focused($focusedField, equals: .notes)
         }
     }
 

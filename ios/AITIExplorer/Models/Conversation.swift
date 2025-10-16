@@ -50,6 +50,7 @@ struct AgentProfile: Identifiable, Codable, Hashable {
     var avatarSystemName: String
     var conversation: Conversation
     var webhookURL: URL?
+    var tools: [AgentTool]
 
     init(
         id: UUID = UUID(),
@@ -59,7 +60,8 @@ struct AgentProfile: Identifiable, Codable, Hashable {
         status: AgentStatus = .online,
         avatarSystemName: String = "bolt.fill",
         conversation: Conversation,
-        webhookURL: URL? = nil
+        webhookURL: URL? = nil,
+        tools: [AgentTool] = []
     ) {
         self.id = id
         self.name = name
@@ -69,5 +71,44 @@ struct AgentProfile: Identifiable, Codable, Hashable {
         self.avatarSystemName = avatarSystemName
         self.conversation = conversation
         self.webhookURL = webhookURL
+        self.tools = tools
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case name
+        case role
+        case description
+        case status
+        case avatarSystemName
+        case conversation
+        case webhookURL
+        case tools
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        role = try container.decode(String.self, forKey: .role)
+        description = try container.decode(String.self, forKey: .description)
+        status = try container.decode(AgentStatus.self, forKey: .status)
+        avatarSystemName = try container.decode(String.self, forKey: .avatarSystemName)
+        conversation = try container.decode(Conversation.self, forKey: .conversation)
+        webhookURL = try container.decodeIfPresent(URL.self, forKey: .webhookURL)
+        tools = try container.decodeIfPresent([AgentTool].self, forKey: .tools) ?? []
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(name, forKey: .name)
+        try container.encode(role, forKey: .role)
+        try container.encode(description, forKey: .description)
+        try container.encode(status, forKey: .status)
+        try container.encode(avatarSystemName, forKey: .avatarSystemName)
+        try container.encode(conversation, forKey: .conversation)
+        try container.encodeIfPresent(webhookURL, forKey: .webhookURL)
+        try container.encode(tools, forKey: .tools)
     }
 }
