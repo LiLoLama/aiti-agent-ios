@@ -205,6 +205,10 @@ struct ProfileScreen: View {
 
     private func themeOption(title: String, icon: String, option: ColorSchemeOption) -> some View {
         let isSelected = appState.settings.colorScheme == option
+        let backgroundFill: AnyShapeStyle = isSelected
+            ? AnyShapeStyle(ExplorerTheme.goldGradient.opacity(0.22))
+            : AnyShapeStyle(ExplorerTheme.surfaceElevated.opacity(0.85))
+
         return Button {
             var settings = appState.settings
             settings.colorScheme = option
@@ -220,7 +224,7 @@ struct ProfileScreen: View {
             .frame(maxWidth: .infinity)
             .background(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(isSelected ? ExplorerTheme.goldGradient.opacity(0.22) : ExplorerTheme.surfaceElevated.opacity(0.85))
+                    .fill(backgroundFill)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 24, style: .continuous)
