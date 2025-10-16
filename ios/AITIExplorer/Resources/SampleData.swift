@@ -56,7 +56,8 @@ enum SampleData {
             description: "Unterstützt dich bei der Planung deiner Marketing-Aktivitäten.",
             status: .online,
             avatarSystemName: "megaphone.fill",
-            conversation: conversation(agentId: id, title: "Launch Kampagne")
+            conversation: conversation(agentId: id, title: "Launch Kampagne"),
+            webhookURL: URL(string: "https://hooks.aiti.ai/marketing")
         )
     }
 
@@ -69,7 +70,8 @@ enum SampleData {
             description: "Analysiert Anforderungen und erstellt User Stories.",
             status: .busy,
             avatarSystemName: "shippingbox.fill",
-            conversation: conversation(agentId: id, title: "Feature Discovery")
+            conversation: conversation(agentId: id, title: "Feature Discovery"),
+            webhookURL: URL(string: "https://hooks.aiti.ai/product")
         )
     }
 
@@ -82,7 +84,8 @@ enum SampleData {
             description: "Findet Antworten und fasst Ergebnisse prägnant zusammen.",
             status: .offline,
             avatarSystemName: "chart.bar.fill",
-            conversation: conversation(agentId: id, title: "Marktanalyse")
+            conversation: conversation(agentId: id, title: "Marktanalyse"),
+            webhookURL: URL(string: "https://hooks.aiti.ai/research")
         )
     }
 
@@ -115,8 +118,7 @@ enum SampleData {
             playSendSound: true,
             showTypingIndicator: true,
             preferCompactLayout: false,
-            webhookURL: URL(string: "https://hooks.aiti.ai/example"),
-            notes: "Verbinde deinen Agent mit deinen internen Tools über Webhooks."
+            notes: "Passe Layout und Verhalten deiner App nach deinen Vorlieben an."
         )
     }
 

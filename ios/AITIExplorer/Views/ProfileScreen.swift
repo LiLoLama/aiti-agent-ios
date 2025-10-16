@@ -3,14 +3,12 @@ import SwiftUI
 struct ProfileScreen: View {
     @EnvironmentObject private var appState: AppState
     @StateObject private var viewModel = ProfileViewModel()
-    @State private var newAgentName: String = ""
-    @State private var newAgentRole: String = ""
 
     var body: some View {
         NavigationStack {
             Form {
                 profileSection
-                agentSection
+                agentManagementSection
                 sessionSection
             }
             .navigationTitle("Profil")
@@ -37,39 +35,12 @@ struct ProfileScreen: View {
         }
     }
 
-    private var agentSection: some View {
-        Section(header: Text("Agents"), footer: Text("Aktiviere oder deaktiviere Agents, um ihren Status zu simulieren.")) {
-            ForEach(viewModel.agents) { agent in
-                HStack {
-                    VStack(alignment: .leading) {
-                        Text(agent.name)
-                        Text(agent.role)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    Menu {
-                        Button(agent.status == .online ? "Als offline markieren" : "Als online markieren") {
-                            viewModel.toggleAgent(agent)
-                        }
-                        Button("Agent entfernen", role: .destructive) {
-                            viewModel.removeAgent(agent)
-                        }
-                    } label: {
-                        Label(agent.status.description, systemImage: agent.status == .online ? "checkmark.circle.fill" : "clock")
-                    }
-                }
-            }
-
-            VStack(alignment: .leading, spacing: 8) {
-                TextField("Agent Name", text: $newAgentName)
-                TextField("Rolle", text: $newAgentRole)
-                Button("Agent hinzufügen") {
-                    viewModel.addAgent(name: newAgentName, role: newAgentRole)
-                    newAgentName = ""
-                    newAgentRole = ""
-                }
-                .disabled(newAgentName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+    private var agentManagementSection: some View {
+        Section(header: Text("Agents"), footer: Text("Verwalte deine Agents und ihre Webhook-Integrationen in einem eigenen Bereich.")) {
+            NavigationLink {
+                AgentManagementScreen(viewModel: viewModel)
+            } label: {
+                Label("Agents verwalten", systemImage: "person.3.sequence")
             }
         }
     }

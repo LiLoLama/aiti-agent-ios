@@ -9,26 +9,13 @@ struct SettingsScreen: View {
             Form {
                 appearanceSection
                 preferencesSection
-                webhookSection
             }
             .navigationTitle("Einstellungen")
             .toolbar { toolbarItems }
-            .alert("Webhook Test", isPresented: isTestingWebhookBinding) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text(viewModel.webhookMessage ?? "")
-            }
         }
         .onAppear {
             viewModel.attach(appState: appState)
         }
-    }
-
-    private var isTestingWebhookBinding: Binding<Bool> {
-        Binding(
-            get: { viewModel.webhookTestStatus == .success || viewModel.webhookTestStatus == .failure },
-            set: { _ in viewModel.webhookTestStatus = .idle }
-        )
     }
 
     private var appearanceSection: some View {
@@ -61,21 +48,6 @@ struct SettingsScreen: View {
 
             TextField("Notizen", text: $viewModel.settings.notes, axis: .vertical)
                 .lineLimit(3...6)
-        }
-    }
-
-    private var webhookSection: some View {
-        Section(header: Text("Webhook"), footer: Text("Nutze Webhooks, um externe Systeme mit Antworten deiner Agents zu versorgen.")) {
-            TextField("https://hooks.example.com", text: Binding(
-                get: { viewModel.settings.webhookURL?.absoluteString ?? "" },
-                set: { viewModel.settings.webhookURL = URL(string: $0) }
-            ))
-            .keyboardType(.URL)
-            .textInputAutocapitalization(.never)
-
-            Button("Webhook testen") {
-                viewModel.testWebhook()
-            }
         }
     }
 

@@ -3,9 +3,6 @@ import Foundation
 final class SettingsViewModel: ObservableObject {
     @Published var settings: AgentSettingsModel
     @Published var saveStatus: SaveStatus = .idle
-    @Published var webhookTestStatus: SaveStatus = .idle
-    @Published var webhookMessage: String?
-
     enum SaveStatus {
         case idle
         case success
@@ -41,18 +38,4 @@ final class SettingsViewModel: ObservableObject {
         saveStatus = .idle
     }
 
-    func testWebhook() {
-        guard settings.webhookURL != nil else {
-            webhookMessage = "Bitte hinterlege zuerst eine gültige URL."
-            webhookTestStatus = .failure
-            return
-        }
-
-        webhookTestStatus = .inProgress
-        webhookMessage = "Webhook Test wird gesendet …"
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-            self?.webhookMessage = "Webhook erfolgreich simuliert!"
-            self?.webhookTestStatus = .success
-        }
-    }
 }
