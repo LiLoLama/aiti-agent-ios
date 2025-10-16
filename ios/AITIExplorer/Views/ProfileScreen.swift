@@ -31,28 +31,54 @@ struct ProfileScreen: View {
     }
 
     private var profileSection: some View {
-        Section(header: Text("Dein Profil")) {
+        Section {
             TextField("Name", text: $viewModel.draftName)
                 .focused($focusedField, equals: .name)
-            TextField("Bio", text: $viewModel.draftBio, axis: .vertical)
+            TextField("Beschreibung", text: $viewModel.draftBio, axis: .vertical)
                 .lineLimit(2...5)
                 .focused($focusedField, equals: .bio)
-            Toggle("Aktiv", isOn: $viewModel.isActive)
+
+            LabeledContent("Status") {
+                Label(viewModel.statusLabel, systemImage: viewModel.profile.isActive ? "checkmark.circle.fill" : "xmark.circle")
+                    .labelStyle(.titleAndIcon)
+                    .foregroundStyle(viewModel.profile.isActive ? Color.green : Color.secondary)
+            }
+
+            LabeledContent("Agenten insgesamt") {
+                Text("\(viewModel.agents.count)")
+                    .font(.body)
+                    .foregroundStyle(.primary)
+            }
+            Text(viewModel.statusDescription)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
 
             Button("Profil speichern") {
                 viewModel.saveProfile()
                 focusedField = nil
             }
         }
+        header: {
+            Text("Dein Profil")
+        }
+        footer: {
+            Text(viewModel.agentCountText)
+        }
     }
 
     private var agentManagementSection: some View {
-        Section(header: Text("Agents"), footer: Text("Verwalte deine Agents und ihre Webhook-Integrationen in einem eigenen Bereich.")) {
+        Section {
             NavigationLink {
                 AgentManagementScreen(viewModel: viewModel)
             } label: {
                 Label("Agents verwalten", systemImage: "person.3.sequence")
             }
+        }
+        header: {
+            Text("Agents")
+        }
+        footer: {
+            Text("Verwalte deine Agents und ihre Webhook-Integrationen in einem eigenen Bereich.")
         }
     }
 

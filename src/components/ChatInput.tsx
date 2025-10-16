@@ -4,6 +4,7 @@ import {
   PaperClipIcon,
   XMarkIcon
 } from '@heroicons/react/24/outline';
+import { MicrophoneIcon as MicrophoneSolidIcon } from '@heroicons/react/24/solid';
 import {
   ChangeEvent,
   FormEvent,
@@ -74,6 +75,7 @@ export function ChatInput({ onSendMessage, pushToTalkEnabled = true }: ChatInput
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const audioFileInputRef = useRef<HTMLInputElement | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -185,6 +187,16 @@ export function ChatInput({ onSendMessage, pushToTalkEnabled = true }: ChatInput
   }, [message]);
 
   const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files ?? []);
+    if (!files.length) {
+      return;
+    }
+
+    setSelectedFiles((prev) => [...prev, ...files]);
+    event.target.value = '';
+  };
+
+  const handleAudioFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files ?? []);
     if (!files.length) {
       return;
@@ -468,6 +480,9 @@ export function ChatInput({ onSendMessage, pushToTalkEnabled = true }: ChatInput
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
+      if (audioFileInputRef.current) {
+        audioFileInputRef.current.value = '';
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -539,7 +554,11 @@ export function ChatInput({ onSendMessage, pushToTalkEnabled = true }: ChatInput
                   key={`${file.name}-${index}`}
                   className="inline-flex items-center gap-2 rounded-2xl border border-white/10 bg-white/10 px-3 py-2 text-xs text-white/80"
                 >
-                  <PaperClipIcon className="h-4 w-4" />
+                  {file.type?.startsWith('audio/') ? (
+                    <MicrophoneIcon className="h-4 w-4 text-brand-gold" />
+                  ) : (
+                    <PaperClipIcon className="h-4 w-4" />
+                  )}
                   <span className="max-w-[160px] truncate" title={file.name}>
                     {file.name}
                   </span>
@@ -631,16 +650,33 @@ export function ChatInput({ onSendMessage, pushToTalkEnabled = true }: ChatInput
           multiple
           onChange={handleFileChange}
           className="hidden"
-          disabled={isRecording}
+          disabled={isRecording || isSubmitting || isAudioSending}
+        />
+        <input
+          ref={audioFileInputRef}
+          type="file"
+          accept="audio/*"
+          onChange={handleAudioFileChange}
+          className="hidden"
+          disabled={isRecording || isAudioSending || isSubmitting}
         />
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
           className="group rounded-2xl bg-white/5 p-3 text-white/70 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
           title="Dateien anhängen"
-          disabled={isRecording}
+          disabled={isRecording || isSubmitting || isAudioSending}
         >
           <PaperClipIcon className="h-5 w-5 group-hover:text-white" />
+        </button>
+        <button
+          type="button"
+          onClick={() => audioFileInputRef.current?.click()}
+          className="group rounded-2xl bg-white/5 p-3 text-white/70 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+          title="Audiodatei anhängen"
+          disabled={isRecording || isAudioSending || isSubmitting}
+        >
+          <MicrophoneSolidIcon className="h-5 w-5 text-brand-gold transition group-hover:text-brand-gold" />
         </button>
         <textarea
           ref={textareaRef}

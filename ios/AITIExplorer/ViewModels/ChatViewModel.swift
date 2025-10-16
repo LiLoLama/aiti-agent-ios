@@ -35,12 +35,18 @@ final class ChatViewModel: ObservableObject {
         isShowingOverviewOnPhone = false
     }
 
-    func sendMessage(_ text: String) {
-        guard var agent = selectedAgent, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+    func sendMessage(_ text: String, attachments: [ChatAttachment]) {
+        guard var agent = selectedAgent else {
             return
         }
 
-        let userMessage = ChatMessage(author: .user, content: text)
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty || !attachments.isEmpty else {
+            return
+        }
+
+        let content = trimmed.isEmpty && !attachments.isEmpty ? "Audio-Nachricht" : trimmed
+        let userMessage = ChatMessage(author: .user, content: content, attachments: attachments)
         agent.conversation.append(userMessage)
         update(agent)
 
@@ -57,7 +63,6 @@ final class ChatViewModel: ObservableObject {
     }
 
     func deleteConversation(for agent: AgentProfile) {
-        guard let index = agents.firstIndex(where: { $0.id == agent.id }) else { return }
         var updatedAgent = agent
         updatedAgent.conversation.messages.removeAll()
         updatedAgent.conversation.lastUpdated = Date()

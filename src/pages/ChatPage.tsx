@@ -52,6 +52,39 @@ const blobToDataUrl = (blob: Blob): Promise<string> =>
     reader.readAsDataURL(blob);
   });
 
+const getAudioDurationFromBlob = (blob: Blob): Promise<number | null> => {
+  if (typeof window === 'undefined') {
+    return Promise.resolve(null);
+  }
+
+  return new Promise((resolve) => {
+    const audioElement = document.createElement('audio');
+    const objectUrl = URL.createObjectURL(blob);
+
+    const cleanup = () => {
+      URL.revokeObjectURL(objectUrl);
+      audioElement.removeAttribute('src');
+    };
+
+    audioElement.preload = 'metadata';
+    audioElement.src = objectUrl;
+
+    const handleLoadedMetadata = () => {
+      const duration = Number.isFinite(audioElement.duration) ? audioElement.duration : NaN;
+      cleanup();
+      resolve(Number.isFinite(duration) ? duration : null);
+    };
+
+    const handleError = () => {
+      cleanup();
+      resolve(null);
+    };
+
+    audioElement.addEventListener('loadedmetadata', handleLoadedMetadata, { once: true });
+    audioElement.addEventListener('error', handleError, { once: true });
+  });
+};
+
 const toPreview = (value: string) => (value.length > 140 ? `${value.slice(0, 137)}…` : value);
 
 const createId = () => {
@@ -453,15 +486,35 @@ export function ChatPage() {
     const files = submission.files ?? [];
     const audioRecording = submission.audio ?? null;
 
-    const fileAttachments: ChatAttachment[] = await Promise.all(
-      files.map(async (file) => ({
-        id: createId(),
-        name: file.name,
-        size: file.size,
-        type: file.type,
-        url: await blobToDataUrl(file),
-        kind: 'file' as const
-      }))
+    const uploadedAttachments: ChatAttachment[] = await Promise.all(
+      files.map(async (file) => {
+        const url = await blobToDataUrl(file);
+
+        if (file.type?.startsWith('audio/')) {
+          const duration = await getAudioDurationFromBlob(file).catch(() => null);
+          return {
+            id: createId(),
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            url,
+            kind: 'audio' as const,
+            durationSeconds:
+              typeof duration === 'number' && Number.isFinite(duration)
+                ? Number(duration.toFixed(1))
+                : undefined
+          } satisfies ChatAttachment;
+        }
+
+        return {
+          id: createId(),
+          name: file.name,
+          size: file.size,
+          type: file.type,
+          url,
+          kind: 'file' as const
+        } satisfies ChatAttachment;
+      })
     );
 
     const audioAttachments: ChatAttachment[] = audioRecording
@@ -480,11 +533,14 @@ export function ChatPage() {
         ]
       : [];
 
-    const attachments = [...fileAttachments, ...audioAttachments];
+    const attachments = [...uploadedAttachments, ...audioAttachments];
+
+    const hasAudioAttachment =
+      attachments.some((attachment) => attachment.kind === 'audio') || audioAttachments.length > 0;
 
     const messageContent = trimmedText
       ? trimmedText
-      : audioAttachments.length
+      : hasAudioAttachment
       ? 'Audio Nachricht gesendet.'
       : attachments.length
       ? 'Datei gesendet.'
@@ -500,7 +556,7 @@ export function ChatPage() {
 
     const previewSource = trimmedText
       ? trimmedText
-      : audioAttachments.length
+      : hasAudioAttachment
       ? 'Audio Nachricht'
       : attachments[0]?.name ?? 'Neue Nachricht';
     const previewText = toPreview(previewSource);

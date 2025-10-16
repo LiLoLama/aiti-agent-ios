@@ -5,6 +5,8 @@ struct ChatContainerView: View {
     @StateObject private var viewModel = ChatViewModel()
     @State private var draftedMessage: String = ""
     @State private var showSearchSheet = false
+    @StateObject private var profileViewModel = ProfileViewModel()
+    @State private var isPresentingAgentManager = false
 
     var body: some View {
         NavigationSplitView(columnVisibility: .constant(.automatic)) {
@@ -14,8 +16,8 @@ struct ChatContainerView: View {
                 ChatDetailView(
                     agent: agent,
                     draftedMessage: $draftedMessage,
-                    onSend: { text in
-                        viewModel.sendMessage(text)
+                    onSend: { text, attachments in
+                        viewModel.sendMessage(text, attachments: attachments)
                         draftedMessage = ""
                     },
                     pendingResponse: viewModel.pendingResponse
@@ -36,8 +38,12 @@ struct ChatContainerView: View {
                 viewModel.select(agent: agent)
             }
             viewModel.isShowingOverviewOnPhone = false
+            viewModel.isSearching = false
+            profileViewModel.attach(appState: appState)
         }
-        .sheet(isPresented: $showSearchSheet) {
+        .sheet(isPresented: $showSearchSheet, onDismiss: {
+            viewModel.isSearching = false
+        }) {
             NavigationStack {
                 SearchResultsView(
                     query: $viewModel.searchQuery,
@@ -47,12 +53,9 @@ struct ChatContainerView: View {
             }
             .presentationDetents([.medium, .large])
         }
-        .onAppear {
-            viewModel.isSearching = false
-        }
-        .onChange(of: showSearchSheet) { presented in
-            if !presented {
-                viewModel.isSearching = false
+        .sheet(isPresented: $isPresentingAgentManager) {
+            NavigationStack {
+                AgentManagementScreen(viewModel: profileViewModel)
             }
         }
     }
@@ -68,6 +71,38 @@ struct ChatContainerView: View {
                             viewModel.select(agent: agent)
                         }
                 }
+            }
+
+            Section {
+                Button {
+                    isPresentingAgentManager = true
+                } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "sparkle.magnifyingglass")
+                            .font(.title3)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Neuen Agent anlegen")
+                                .font(.headline)
+                            Text("Öffnet die Agent-Verwaltung")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding()
+                    .frame(maxWidth: .infinity)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16, style: .continuous)
+                            .fill(Color.accentColor.opacity(0.15))
+                    )
+                }
+                .buttonStyle(.plain)
+                .padding(.vertical, 4)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .listRowBackground(Color.clear)
             }
         }
         .listStyle(.insetGrouped)

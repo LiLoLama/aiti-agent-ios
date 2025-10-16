@@ -116,8 +116,6 @@ enum SampleData {
             colorScheme: .system,
             accentColor: .gold,
             playSendSound: true,
-            showTypingIndicator: true,
-            preferCompactLayout: false,
             notes: "Passe Layout und Verhalten deiner App nach deinen Vorlieben an."
         )
     }

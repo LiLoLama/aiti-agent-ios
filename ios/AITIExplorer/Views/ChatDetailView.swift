@@ -1,13 +1,18 @@
 import SwiftUI
+import UniformTypeIdentifiers
+import AVFoundation
 
 struct ChatDetailView: View {
     let agent: AgentProfile
     @Binding var draftedMessage: String
-    var onSend: (String) -> Void
+    var onSend: (String, [ChatAttachment]) -> Void
     var pendingResponse: Bool
 
     @Namespace private var bottomID
     @FocusState private var isComposerFocused: Bool
+    @State private var attachments: [ChatAttachment] = []
+    @State private var showingAudioImporter = false
+    @State private var attachmentError: String?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -56,7 +61,15 @@ struct ChatDetailView: View {
                 Divider()
                 MessageComposer(
                     text: $draftedMessage,
-                    onSend: onSend,
+                    attachments: $attachments,
+                    onSend: { text, attachments in
+                        onSend(text, attachments)
+                        draftedMessage = ""
+                        self.attachments.removeAll()
+                    },
+                    onRequestAudioAttachment: {
+                        showingAudioImporter = true
+                    },
                     isFocused: $isComposerFocused
                 )
                 .padding(.horizontal)
@@ -64,6 +77,87 @@ struct ChatDetailView: View {
                 .padding(.bottom, 8)
             }
             .background(.thinMaterial)
+        }
+        .fileImporter(
+            isPresented: $showingAudioImporter,
+            allowedContentTypes: [.audio],
+            allowsMultipleSelection: false
+        ) { result in
+            handleAudioImport(result: result)
+        }
+        .alert("Audio konnte nicht hinzugefügt werden", isPresented: Binding(
+            get: { attachmentError != nil },
+            set: { newValue in if !newValue { attachmentError = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(attachmentError ?? "")
+        }
+    }
+}
+
+private extension ChatDetailView {
+    func handleAudioImport(result: Result<[URL], Error>) {
+        switch result {
+        case .success(let urls):
+            guard let url = urls.first else { return }
+            Task {
+                await processImportedAudio(from: url)
+            }
+        case .failure(let error):
+            Task { @MainActor in
+                attachmentError = error.localizedDescription
+            }
+        }
+    }
+
+    func processImportedAudio(from originalURL: URL) async {
+        let didAccess = originalURL.startAccessingSecurityScopedResource()
+        defer {
+            if didAccess {
+                originalURL.stopAccessingSecurityScopedResource()
+            }
+        }
+
+        do {
+            let tempDirectory = FileManager.default.temporaryDirectory
+            let destinationURL = tempDirectory
+                .appendingPathComponent(UUID().uuidString)
+                .appendingPathExtension(originalURL.pathExtension)
+
+            if FileManager.default.fileExists(atPath: destinationURL.path) {
+                try FileManager.default.removeItem(at: destinationURL)
+            }
+
+            try FileManager.default.copyItem(at: originalURL, to: destinationURL)
+
+            let attributes = try FileManager.default.attributesOfItem(atPath: destinationURL.path)
+            let fileSize = (attributes[.size] as? NSNumber)?.intValue ?? 0
+
+            let asset = AVURLAsset(url: destinationURL)
+            let duration = try await asset.load(.duration)
+            let durationSeconds = Int(round(CMTimeGetSeconds(duration)))
+
+            let resourceValues = try destinationURL.resourceValues(forKeys: [.contentTypeKey])
+            let resolvedType = resourceValues.contentType ?? UTType(filenameExtension: destinationURL.pathExtension)
+            let typeDescription = resolvedType?.preferredMIMEType ?? resolvedType?.identifier ?? "public.audio"
+
+            let attachment = ChatAttachment(
+                name: originalURL.lastPathComponent,
+                size: fileSize,
+                type: typeDescription,
+                url: destinationURL,
+                kind: .audio,
+                durationSeconds: durationSeconds > 0 ? durationSeconds : nil
+            )
+
+            await MainActor.run {
+                attachments.append(attachment)
+            }
+        } catch {
+            await MainActor.run {
+                attachmentError = error.localizedDescription
+            }
         }
     }
 }
@@ -112,11 +206,13 @@ private struct ChatBubble: View {
             }
 
             VStack(alignment: message.author == .agent ? .leading : .trailing, spacing: 10) {
-                Text(message.content)
-                    .padding(16)
-                    .foregroundStyle(message.author == .agent ? .primary : Color.white)
-                    .background(bubbleBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                if !message.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    Text(message.content)
+                        .padding(16)
+                        .foregroundStyle(message.author == .agent ? .primary : Color.white)
+                        .background(bubbleBackground)
+                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                }
 
                 if !message.attachments.isEmpty {
                     AttachmentList(attachments: message.attachments)
@@ -216,7 +312,9 @@ private struct TypingIndicatorView: View {
 
 private struct MessageComposer: View {
     @Binding var text: String
-    var onSend: (String) -> Void
+    @Binding var attachments: [ChatAttachment]
+    var onSend: (String, [ChatAttachment]) -> Void
+    var onRequestAudioAttachment: () -> Void
     var isFocused: FocusState<Bool>.Binding
 
     private var trimmedText: String {
@@ -224,30 +322,57 @@ private struct MessageComposer: View {
     }
 
     var body: some View {
-        HStack(alignment: .bottom, spacing: 12) {
-            TextField("Nachricht schreiben …", text: $text, axis: .vertical)
-                .lineLimit(1...6)
-                .textInputAutocapitalization(.sentences)
-                .disableAutocorrection(false)
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
-                .background(RoundedRectangle(cornerRadius: 16).fill(Color(.secondarySystemBackground)))
-                .focused(isFocused)
-
-            Button {
-                let message = trimmedText
-                guard !message.isEmpty else { return }
-                onSend(message)
-                text = ""
-                isFocused.wrappedValue = false
-            } label: {
-                Image(systemName: "paperplane.fill")
-                    .font(.title3.bold())
-                    .foregroundStyle(Color.white)
-                    .padding(12)
-                    .background(Circle().fill(Color.accentColor))
+        VStack(alignment: .leading, spacing: 8) {
+            if !attachments.isEmpty {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        ForEach(attachments) { attachment in
+                            AttachmentComposerChip(attachment: attachment) {
+                                attachments.removeAll { $0.id == attachment.id }
+                            }
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
             }
-            .disabled(trimmedText.isEmpty)
+
+            HStack(alignment: .bottom, spacing: 12) {
+                TextField("Nachricht schreiben …", text: $text, axis: .vertical)
+                    .lineLimit(1...6)
+                    .textInputAutocapitalization(.sentences)
+                    .disableAutocorrection(false)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(RoundedRectangle(cornerRadius: 16).fill(Color(.secondarySystemBackground)))
+                    .focused(isFocused)
+
+                Button(action: onRequestAudioAttachment) {
+                    Image(systemName: "mic.fill")
+                        .font(.title3)
+                        .foregroundStyle(Color.accentColor)
+                        .padding(12)
+                        .background(
+                            Circle()
+                                .fill(Color.accentColor.opacity(0.12))
+                        )
+                }
+                .accessibilityLabel("Audio hinzufügen")
+
+                Button {
+                    let message = trimmedText
+                    guard !message.isEmpty || !attachments.isEmpty else { return }
+                    onSend(message, attachments)
+                    text = ""
+                    isFocused.wrappedValue = false
+                } label: {
+                    Image(systemName: "paperplane.fill")
+                        .font(.title3.bold())
+                        .foregroundStyle(Color.white)
+                        .padding(12)
+                        .background(Circle().fill(Color.accentColor))
+                }
+                .disabled(trimmedText.isEmpty && attachments.isEmpty)
+            }
         }
         .animation(.easeInOut(duration: 0.2), value: isFocused.wrappedValue)
         .toolbar {
@@ -261,11 +386,40 @@ private struct MessageComposer: View {
     }
 }
 
+private struct AttachmentComposerChip: View {
+    let attachment: ChatAttachment
+    var onRemove: () -> Void
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: attachment.kind.iconName)
+                .foregroundStyle(Color.accentColor)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(attachment.name)
+                    .font(.subheadline)
+                    .foregroundStyle(.primary)
+                Text(attachment.formattedSize)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            Button(action: onRemove) {
+                Image(systemName: "xmark.circle.fill")
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(.ultraThinMaterial)
+        .clipShape(Capsule())
+    }
+}
+
 #Preview {
     ChatDetailView(
         agent: SampleData.previewUser.agents.first!,
         draftedMessage: .constant(""),
-        onSend: { _ in },
+        onSend: { _, _ in },
         pendingResponse: true
     )
 }
