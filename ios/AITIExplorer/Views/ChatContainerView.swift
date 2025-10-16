@@ -18,14 +18,9 @@ struct ChatContainerView: View {
                         viewModel.sendMessage(text)
                         draftedMessage = ""
                     },
-                    pendingResponse: viewModel.pendingResponse,
-                    onShowSearch: {
-                        showSearchSheet.toggle()
-                        viewModel.isSearching = true
-                    }
+                    pendingResponse: viewModel.pendingResponse
                 )
                 .toolbar { toolbarItems }
-                .navigationTitle(agent.name)
             } else {
                 ContentUnavailableView(
                     "Kein Agent ausgewählt",
@@ -55,6 +50,11 @@ struct ChatContainerView: View {
         .onAppear {
             viewModel.isSearching = false
         }
+        .onChange(of: showSearchSheet) { presented in
+            if !presented {
+                viewModel.isSearching = false
+            }
+        }
     }
 
     private var chatList: some View {
@@ -78,7 +78,12 @@ struct ChatContainerView: View {
     private var toolbarItems: some ToolbarContent {
         ToolbarItemGroup(placement: .navigationBarTrailing) {
             Button {
-                showSearchSheet.toggle()
+                if showSearchSheet {
+                    showSearchSheet = false
+                } else {
+                    viewModel.isSearching = true
+                    showSearchSheet = true
+                }
             } label: {
                 Image(systemName: "magnifyingglass")
             }

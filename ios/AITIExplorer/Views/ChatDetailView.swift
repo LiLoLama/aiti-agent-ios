@@ -5,14 +5,13 @@ struct ChatDetailView: View {
     @Binding var draftedMessage: String
     var onSend: (String) -> Void
     var pendingResponse: Bool
-    var onShowSearch: () -> Void
 
     @Namespace private var bottomID
     @FocusState private var isComposerFocused: Bool
 
     var body: some View {
         VStack(spacing: 0) {
-            ChatHeaderView(agent: agent, onShowSearch: onShowSearch)
+            ChatHeaderView(agent: agent)
 
             Divider()
                 .background(.white.opacity(0.1))
@@ -35,6 +34,10 @@ struct ChatDetailView: View {
                             .id(bottomID)
                     }
                     .padding(.vertical, 24)
+                }
+                .scrollDismissesKeyboard(.interactively)
+                .onTapGesture {
+                    isComposerFocused = false
                 }
                 .background(Color(.systemBackground))
                 .onChange(of: agent.conversation.messages.count) { _ in
@@ -69,7 +72,6 @@ struct ChatDetailView: View {
 
 private struct ChatHeaderView: View {
     let agent: AgentProfile
-    var onShowSearch: () -> Void
 
     var body: some View {
         HStack(alignment: .center, spacing: 16) {
@@ -93,14 +95,6 @@ private struct ChatHeaderView: View {
             }
 
             Spacer()
-
-            Button(action: onShowSearch) {
-                Image(systemName: "magnifyingglass")
-                    .font(.title3)
-                    .padding(10)
-                    .background(.ultraThinMaterial)
-                    .clipShape(Circle())
-            }
         }
         .padding([.horizontal, .top])
         .padding(.bottom, 12)
@@ -295,7 +289,6 @@ private struct MessageComposer: View {
         agent: SampleData.previewUser.agents.first!,
         draftedMessage: .constant(""),
         onSend: { _ in },
-        pendingResponse: true,
-        onShowSearch: {}
+        pendingResponse: true
     )
 }

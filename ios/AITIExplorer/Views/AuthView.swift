@@ -1,8 +1,16 @@
 import SwiftUI
 
+private enum AuthField: Hashable {
+    case name
+    case email
+    case password
+    case confirmPassword
+}
+
 struct AuthView: View {
     @EnvironmentObject private var appState: AppState
     @StateObject private var viewModel = AuthViewModel()
+    @FocusState private var focusedField: AuthField?
 
     var body: some View {
         VStack {
@@ -39,6 +47,15 @@ struct AuthView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding()
         .background(LinearGradient(colors: [.black, Color(.sRGB, red: 0.1, green: 0.1, blue: 0.12, opacity: 1)], startPoint: .top, endPoint: .bottom))
+        .scrollDismissesKeyboard(.interactively)
+        .onTapGesture {
+            focusedField = nil
+        }
+        .simultaneousGesture(DragGesture(minimumDistance: 12).onChanged { value in
+            if value.translation.height > 16 {
+                focusedField = nil
+            }
+        })
         .onReceive(appState.$currentUser) { user in
             if user != nil {
                 viewModel.infoMessage = nil
@@ -62,6 +79,7 @@ struct AuthView: View {
                 TextField("Name", text: $viewModel.name)
                     .textContentType(.name)
                     .textFieldStyle(.roundedBorder)
+                    .focused($focusedField, equals: .name)
             }
 
             TextField("E-Mail", text: $viewModel.email)
@@ -69,18 +87,24 @@ struct AuthView: View {
                 .keyboardType(.emailAddress)
                 .textInputAutocapitalization(.never)
                 .textFieldStyle(.roundedBorder)
+                .focused($focusedField, equals: .email)
 
             SecureField("Passwort", text: $viewModel.password)
                 .textContentType(.password)
                 .textFieldStyle(.roundedBorder)
+                .focused($focusedField, equals: .password)
 
             if viewModel.mode == .register {
                 SecureField("Passwort bestätigen", text: $viewModel.confirmPassword)
                     .textContentType(.password)
                     .textFieldStyle(.roundedBorder)
+                    .focused($focusedField, equals: .confirmPassword)
             }
 
-            Button(action: viewModel.submit) {
+            Button {
+                focusedField = nil
+                viewModel.submit()
+            } label: {
                 if viewModel.isProcessing {
                     ProgressView()
                         .progressViewStyle(.circular)
@@ -98,6 +122,7 @@ struct AuthView: View {
                 withAnimation(.spring()) {
                     viewModel.toggleMode()
                 }
+                focusedField = nil
             }
             .font(.subheadline)
             .foregroundStyle(.secondary)

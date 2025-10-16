@@ -1,5 +1,14 @@
 import SwiftUI
 
+private enum AgentField: Hashable {
+    case newName
+    case newRole
+    case newWebhook
+    case agentName(UUID)
+    case agentRole(UUID)
+    case agentWebhook(UUID)
+}
+
 struct AgentManagementScreen: View {
     @ObservedObject var viewModel: ProfileViewModel
 
@@ -7,6 +16,7 @@ struct AgentManagementScreen: View {
     @State private var newAgentRole: String = ""
     @State private var newAgentWebhook: String = ""
     @State private var webhookStatus: [UUID: WebhookTestState] = [:]
+    @FocusState private var focusedField: AgentField?
 
     var body: some View {
         Form {
@@ -15,6 +25,15 @@ struct AgentManagementScreen: View {
         }
         .navigationTitle("Agents verwalten")
         .toolbar { toolbarContent }
+        .scrollDismissesKeyboard(.interactively)
+        .onTapGesture {
+            focusedField = nil
+        }
+        .simultaneousGesture(DragGesture(minimumDistance: 12).onChanged { value in
+            if value.translation.height > 16 {
+                focusedField = nil
+            }
+        })
         .onDisappear {
             viewModel.saveAgentChanges()
         }
@@ -32,9 +51,11 @@ struct AgentManagementScreen: View {
 
                     AgentEditorCard(
                         agent: agentBinding,
+                        focusedField: $focusedField,
                         status: webhookStatus[agent.id],
                         onTestWebhook: { testWebhook(for: agent) },
                         onRemove: {
+                            focusedField = nil
                             webhookStatus[agent.id] = nil
                             viewModel.removeAgent(agent)
                         }
@@ -49,13 +70,16 @@ struct AgentManagementScreen: View {
             TextField("Name", text: $newAgentName)
                 .textInputAutocapitalization(.words)
                 .disableAutocorrection(true)
+                .focused($focusedField, equals: .newName)
             TextField("Rolle", text: $newAgentRole)
                 .textInputAutocapitalization(.sentences)
                 .disableAutocorrection(true)
+                .focused($focusedField, equals: .newRole)
             TextField("Webhook URL (optional)", text: $newAgentWebhook)
                 .keyboardType(.URL)
                 .textInputAutocapitalization(.never)
                 .disableAutocorrection(true)
+                .focused($focusedField, equals: .newWebhook)
 
             Button("Agent erstellen") {
                 viewModel.addAgent(
@@ -66,6 +90,7 @@ struct AgentManagementScreen: View {
                 newAgentName = ""
                 newAgentRole = ""
                 newAgentWebhook = ""
+                focusedField = nil
             }
             .disabled(newAgentName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }
@@ -102,6 +127,7 @@ private struct WebhookTestState: Equatable {
 
 private struct AgentEditorCard: View {
     @Binding var agent: AgentProfile
+    @Binding var focusedField: AgentField?
     var status: WebhookTestState?
     var onTestWebhook: () -> Void
     var onRemove: () -> Void
@@ -111,10 +137,12 @@ private struct AgentEditorCard: View {
             TextField("Name", text: $agent.name)
                 .textInputAutocapitalization(.words)
                 .disableAutocorrection(true)
+                .focused($focusedField, equals: .agentName(agent.id))
 
             TextField("Rolle", text: $agent.role)
                 .textInputAutocapitalization(.sentences)
                 .disableAutocorrection(true)
+                .focused($focusedField, equals: .agentRole(agent.id))
 
             HStack {
                 Label(agent.status.description, systemImage: "checkmark.circle.fill")
@@ -133,6 +161,7 @@ private struct AgentEditorCard: View {
             .keyboardType(.URL)
             .textInputAutocapitalization(.never)
             .disableAutocorrection(true)
+            .focused($focusedField, equals: .agentWebhook(agent.id))
 
             HStack {
                 Button("Webhook testen") {
