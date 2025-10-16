@@ -14,7 +14,6 @@ final class AuthViewModel: ObservableObject {
     @Published var confirmPassword: String = ""
     @Published var isProcessing = false
     @Published var errorMessage: String?
-    @Published var infoMessage: String?
 
     private var appState: AppState?
 
@@ -37,13 +36,11 @@ final class AuthViewModel: ObservableObject {
     func toggleMode() {
         mode = mode == .login ? .register : .login
         errorMessage = nil
-        infoMessage = nil
     }
 
     func submit() {
         isProcessing = true
         errorMessage = nil
-        infoMessage = nil
 
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self else { return }
@@ -53,18 +50,12 @@ final class AuthViewModel: ObservableObject {
                 case .login:
                     guard let appState = self.appState else { throw AuthLifecycleError.missingAppState }
                     try appState.login(email: self.email, password: self.password)
-                    DispatchQueue.main.async {
-                        self.infoMessage = "Erfolgreich angemeldet. Willkommen zurück!"
-                    }
                 case .register:
                     guard self.password == self.confirmPassword else {
                         throw RegistrationError.passwordMismatch
                     }
                     guard let appState = self.appState else { throw AuthLifecycleError.missingAppState }
                     try appState.register(name: self.name, email: self.email, password: self.password)
-                    DispatchQueue.main.async {
-                        self.infoMessage = "Account erstellt! Du kannst dein Profil nun anpassen."
-                    }
                 }
             } catch let error as RegistrationError {
                 DispatchQueue.main.async {

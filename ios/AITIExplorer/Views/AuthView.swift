@@ -38,14 +38,8 @@ struct AuthView: View {
         }
         .scrollDismissesKeyboard(.interactively)
         .dismissFocusOnInteract($focusedField)
-        .onReceive(appState.$currentUser) { user in
-            if user != nil {
-                viewModel.infoMessage = nil
-            }
-        }
         .onAppear {
             viewModel.attach(appState: appState)
-            viewModel.infoMessage = "Nutze demo@aiti.ai und SwiftRocks! zum Testen."
         }
     }
 
@@ -163,9 +157,6 @@ struct AuthView: View {
                     messageBanner(text: errorMessage, icon: "exclamationmark.triangle.fill", tint: ExplorerTheme.danger)
                 }
 
-                if let info = viewModel.infoMessage {
-                    messageBanner(text: info, icon: "info.circle.fill", tint: ExplorerTheme.info)
-                }
             }
 
             footer
