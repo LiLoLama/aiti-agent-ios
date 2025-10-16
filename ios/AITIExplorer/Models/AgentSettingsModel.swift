@@ -70,16 +70,12 @@ struct AgentSettingsModel: Codable, Hashable {
     var colorScheme: ColorSchemeOption
     var accentColor: AccentColorOption
     var playSendSound: Bool
-    var showTypingIndicator: Bool
-    var preferCompactLayout: Bool
     var notes: String
 
     static let `default` = AgentSettingsModel(
         colorScheme: .system,
         accentColor: .gold,
         playSendSound: true,
-        showTypingIndicator: true,
-        preferCompactLayout: false,
         notes: ""
     )
 }

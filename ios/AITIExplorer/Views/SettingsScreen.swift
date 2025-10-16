@@ -50,8 +50,6 @@ struct SettingsScreen: View {
     private var preferencesSection: some View {
         Section(header: Text("Chat Verhalten")) {
             Toggle("Sende-Sound abspielen", isOn: $viewModel.settings.playSendSound)
-            Toggle("Typing-Indikator anzeigen", isOn: $viewModel.settings.showTypingIndicator)
-            Toggle("Kompaktes Layout", isOn: $viewModel.settings.preferCompactLayout)
 
             TextField("Notizen", text: $viewModel.settings.notes, axis: .vertical)
                 .lineLimit(3...6)

@@ -5,7 +5,6 @@ final class ProfileViewModel: ObservableObject {
     @Published var profile: UserProfile
     @Published var draftName: String
     @Published var draftBio: String
-    @Published var isActive: Bool
     @Published var agents: [AgentProfile]
     @Published var toastMessage: String?
 
@@ -17,7 +16,6 @@ final class ProfileViewModel: ObservableObject {
         self.profile = profile
         self.draftName = profile.name
         self.draftBio = profile.bio
-        self.isActive = profile.isActive
         self.agents = profile.agents
 
         configureBindings()
@@ -30,7 +28,6 @@ final class ProfileViewModel: ObservableObject {
             self.profile = profile
             self.draftName = profile.name
             self.draftBio = profile.bio
-            self.isActive = profile.isActive
             self.agents = profile.agents
         }
     }
@@ -40,7 +37,6 @@ final class ProfileViewModel: ObservableObject {
     func saveProfile() {
         profile.name = draftName
         profile.bio = draftBio
-        profile.isActive = isActive
         profile.agents = agents
         persistProfileChanges()
         toastMessage = "Profil gespeichert"
@@ -97,9 +93,29 @@ private extension ProfileViewModel {
                 self?.profile = profile
                 self?.draftName = profile.name
                 self?.draftBio = profile.bio
-                self?.isActive = profile.isActive
                 self?.agents = profile.agents
             }
             .store(in: &cancellables)
+    }
+}
+
+extension ProfileViewModel {
+    var statusLabel: String {
+        profile.isActive ? "Aktiv" : "Inaktiv"
+    }
+
+    var statusDescription: String {
+        profile.isActive ? "Dein Account ist aktiv und einsatzbereit." : "Dein Account ist aktuell inaktiv."
+    }
+
+    var agentCountText: String {
+        let count = agents.count
+        if count == 0 {
+            return "Noch keine Agenten erstellt"
+        }
+        if count == 1 {
+            return "1 Agent erstellt"
+        }
+        return "\(count) Agenten erstellt"
     }
 }
