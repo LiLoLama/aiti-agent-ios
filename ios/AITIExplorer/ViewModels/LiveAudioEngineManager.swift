@@ -56,20 +56,38 @@ final class LiveAudioEngineManager: ObservableObject {
     }
 
     private func ensureMicrophonePermission() async throws {
-        switch audioSession.recordPermission {
-        case .granted:
-            return
-        case .denied:
-            throw EngineError.microphonePermissionDenied
-        case .undetermined:
-            let granted = await withCheckedContinuation { continuation in
-                audioSession.requestRecordPermission { continuation.resume(returning: $0) }
-            }
-            if !granted {
+        if #available(iOS 17, *) {
+            switch AVAudioApplication.shared.recordPermission {
+            case .granted:
+                return
+            case .denied:
+                throw EngineError.microphonePermissionDenied
+            case .undetermined:
+                let granted = await withCheckedContinuation { continuation in
+                    AVAudioApplication.requestRecordPermission { continuation.resume(returning: $0) }
+                }
+                if !granted {
+                    throw EngineError.microphonePermissionDenied
+                }
+            @unknown default:
                 throw EngineError.microphonePermissionDenied
             }
-        @unknown default:
-            throw EngineError.microphonePermissionDenied
+        } else {
+            switch audioSession.recordPermission {
+            case .granted:
+                return
+            case .denied:
+                throw EngineError.microphonePermissionDenied
+            case .undetermined:
+                let granted = await withCheckedContinuation { continuation in
+                    audioSession.requestRecordPermission { continuation.resume(returning: $0) }
+                }
+                if !granted {
+                    throw EngineError.microphonePermissionDenied
+                }
+            @unknown default:
+                throw EngineError.microphonePermissionDenied
+            }
         }
     }
 

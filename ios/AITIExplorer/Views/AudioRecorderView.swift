@@ -37,7 +37,7 @@ struct AudioRecorderView: View {
             Spacer()
         }
         .padding()
-        .onChange(of: recorder.activeError) { newValue in
+        .onReceive(recorder.$activeError) { newValue in
             showErrorAlert = newValue != nil
         }
         .alert("Recording Error", isPresented: $showErrorAlert, presenting: recorder.activeError) { _ in

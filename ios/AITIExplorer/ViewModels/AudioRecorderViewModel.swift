@@ -80,22 +80,42 @@ final class AudioRecorderViewModel: NSObject, ObservableObject {
     }
 
     private func ensureMicrophonePermission() async throws {
-        switch audioSession.recordPermission {
-        case .granted:
-            return
-        case .denied:
-            throw RecorderError.microphonePermissionDenied
-        case .undetermined:
-            let granted = await withCheckedContinuation { continuation in
-                audioSession.requestRecordPermission { isGranted in
-                    continuation.resume(returning: isGranted)
+        if #available(iOS 17, *) {
+            switch AVAudioApplication.shared.recordPermission {
+            case .granted:
+                return
+            case .denied:
+                throw RecorderError.microphonePermissionDenied
+            case .undetermined:
+                let granted = await withCheckedContinuation { continuation in
+                    AVAudioApplication.requestRecordPermission { isGranted in
+                        continuation.resume(returning: isGranted)
+                    }
                 }
-            }
-            if !granted {
+                if !granted {
+                    throw RecorderError.microphonePermissionDenied
+                }
+            @unknown default:
                 throw RecorderError.microphonePermissionDenied
             }
-        @unknown default:
-            throw RecorderError.microphonePermissionDenied
+        } else {
+            switch audioSession.recordPermission {
+            case .granted:
+                return
+            case .denied:
+                throw RecorderError.microphonePermissionDenied
+            case .undetermined:
+                let granted = await withCheckedContinuation { continuation in
+                    audioSession.requestRecordPermission { isGranted in
+                        continuation.resume(returning: isGranted)
+                    }
+                }
+                if !granted {
+                    throw RecorderError.microphonePermissionDenied
+                }
+            @unknown default:
+                throw RecorderError.microphonePermissionDenied
+            }
         }
     }
 
