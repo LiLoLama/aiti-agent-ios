@@ -41,7 +41,9 @@ struct ChatContainerView: View {
             viewModel.isSearching = false
             profileViewModel.attach(appState: appState)
         }
-        .sheet(isPresented: $showSearchSheet) {
+        .sheet(isPresented: $showSearchSheet, onDismiss: {
+            viewModel.isSearching = false
+        }) {
             NavigationStack {
                 SearchResultsView(
                     query: $viewModel.searchQuery,
@@ -54,11 +56,6 @@ struct ChatContainerView: View {
         .sheet(isPresented: $isPresentingAgentManager) {
             NavigationStack {
                 AgentManagementScreen(viewModel: profileViewModel)
-            }
-        }
-        .onChange(of: showSearchSheet) { presented in
-            if !presented {
-                viewModel.isSearching = false
             }
         }
     }

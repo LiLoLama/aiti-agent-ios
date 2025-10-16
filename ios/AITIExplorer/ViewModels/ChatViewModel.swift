@@ -63,7 +63,6 @@ final class ChatViewModel: ObservableObject {
     }
 
     func deleteConversation(for agent: AgentProfile) {
-        guard let index = agents.firstIndex(where: { $0.id == agent.id }) else { return }
         var updatedAgent = agent
         updatedAgent.conversation.messages.removeAll()
         updatedAgent.conversation.lastUpdated = Date()

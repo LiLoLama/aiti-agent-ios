@@ -97,16 +97,21 @@ struct ChatDetailView: View {
 }
 
 private extension ChatDetailView {
-    func handleAudioImport(result: Result<URL, Error>) {
+    func handleAudioImport(result: Result<[URL], Error>) {
         switch result {
-        case .success(let url):
-            processImportedAudio(from: url)
+        case .success(let urls):
+            guard let url = urls.first else { return }
+            Task {
+                await processImportedAudio(from: url)
+            }
         case .failure(let error):
-            attachmentError = error.localizedDescription
+            Task { @MainActor in
+                attachmentError = error.localizedDescription
+            }
         }
     }
 
-    func processImportedAudio(from originalURL: URL) {
+    func processImportedAudio(from originalURL: URL) async {
         let didAccess = originalURL.startAccessingSecurityScopedResource()
         defer {
             if didAccess {
@@ -130,8 +135,12 @@ private extension ChatDetailView {
             let fileSize = (attributes[.size] as? NSNumber)?.intValue ?? 0
 
             let asset = AVURLAsset(url: destinationURL)
-            let durationSeconds = Int(round(CMTimeGetSeconds(asset.duration)))
-            let typeDescription = asset.fileType.map { $0.rawValue } ?? "audio/mpeg"
+            let duration = try await asset.load(.duration)
+            let durationSeconds = Int(round(CMTimeGetSeconds(duration)))
+
+            let resourceValues = try destinationURL.resourceValues(forKeys: [.contentTypeKey])
+            let resolvedType = resourceValues.contentType ?? UTType(filenameExtension: destinationURL.pathExtension)
+            let typeDescription = resolvedType?.preferredMIMEType ?? resolvedType?.identifier ?? "public.audio"
 
             let attachment = ChatAttachment(
                 name: originalURL.lastPathComponent,
@@ -142,9 +151,13 @@ private extension ChatDetailView {
                 durationSeconds: durationSeconds > 0 ? durationSeconds : nil
             )
 
-            attachments.append(attachment)
+            await MainActor.run {
+                attachments.append(attachment)
+            }
         } catch {
-            attachmentError = error.localizedDescription
+            await MainActor.run {
+                attachmentError = error.localizedDescription
+            }
         }
     }
 }
