@@ -31,7 +31,7 @@ struct ProfileScreen: View {
     }
 
     private var profileSection: some View {
-        Section(header: Text("Dein Profil")) {
+        Section {
             TextField("Name", text: $viewModel.draftName)
                 .focused($focusedField, equals: .name)
             TextField("Beschreibung", text: $viewModel.draftBio, axis: .vertical)
@@ -58,18 +58,27 @@ struct ProfileScreen: View {
                 focusedField = nil
             }
         }
+        header: {
+            Text("Dein Profil")
+        }
         footer: {
             Text(viewModel.agentCountText)
         }
     }
 
     private var agentManagementSection: some View {
-        Section(header: Text("Agents"), footer: Text("Verwalte deine Agents und ihre Webhook-Integrationen in einem eigenen Bereich.")) {
+        Section {
             NavigationLink {
                 AgentManagementScreen(viewModel: viewModel)
             } label: {
                 Label("Agents verwalten", systemImage: "person.3.sequence")
             }
+        }
+        header: {
+            Text("Agents")
+        }
+        footer: {
+            Text("Verwalte deine Agents und ihre Webhook-Integrationen in einem eigenen Bereich.")
         }
     }
 
