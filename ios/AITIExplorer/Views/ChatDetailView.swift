@@ -368,7 +368,7 @@ private struct MessageComposer: View {
                     HStack(spacing: 8) {
                         ForEach(attachments) { attachment in
                             AttachmentComposerChip(attachment: attachment) {
-                                attachments.removeAll { $0.id == attachment.id }
+                                removeAttachment(attachment)
                             }
                         }
                     }
@@ -435,5 +435,51 @@ private struct MessageComposer: View {
                 }
             }
         }
+    }
+
+    private func removeAttachment(_ attachment: ChatAttachment) {
+        attachments.removeAll { $0.id == attachment.id }
+    }
+}
+
+private struct AttachmentComposerChip: View {
+    let attachment: ChatAttachment
+    var onRemove: () -> Void
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: attachment.kind.iconName)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(attachment.name)
+                    .font(.footnote.weight(.medium))
+                    .lineLimit(1)
+                Text(attachment.formattedSize)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 0)
+
+            Button(action: onRemove) {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Anhang entfernen")
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color(.secondarySystemBackground))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(Color(.separator), lineWidth: 0.5)
+        )
     }
 }
