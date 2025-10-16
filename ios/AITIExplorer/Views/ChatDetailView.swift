@@ -1,6 +1,9 @@
 import SwiftUI
 import UniformTypeIdentifiers
 import AVFoundation
+#if canImport(AVFAudio)
+import AVFAudio
+#endif
 
 struct ChatDetailView: View {
     let agent: AgentProfile
@@ -44,12 +47,12 @@ struct ChatDetailView: View {
                 .scrollDismissesKeyboard(.interactively)
                 .dismissFocusOnInteract($isComposerFocused)
                 .background(Color(.systemBackground))
-                .onChange(of: agent.conversation.messages.count) { _ in
+                .onChange(of: agent.conversation.messages.count) {
                     withAnimation(.easeInOut(duration: 0.3)) {
                         proxy.scrollTo(bottomID, anchor: .bottom)
                     }
                 }
-                .onChange(of: isComposerFocused) { focused in
+                .onChange(of: isComposerFocused) { _, focused in
                     guard focused else { return }
                     withAnimation(.easeInOut(duration: 0.25)) {
                         proxy.scrollTo(bottomID, anchor: .bottom)
@@ -448,7 +451,7 @@ private struct AudioRecorderSheet: View {
     @Environment(\.dismiss) private var dismiss
     var onComplete: (ChatAttachment) -> Void
 
-    @State private var permissionStatus: AVAudioSession.RecordPermission = .undetermined
+    @State private var permissionStatus: MicrophonePermissionStatus = .undetermined
     @State private var isRecording = false
     @State private var recorder: AVAudioRecorder?
     @State private var recordedURL: URL?
@@ -458,6 +461,12 @@ private struct AudioRecorderSheet: View {
     @State private var timer: Timer?
     @State private var errorMessage: String?
     @State private var didFinishSuccessfully = false
+
+    private enum MicrophonePermissionStatus {
+        case undetermined
+        case denied
+        case granted
+    }
 
     private var formattedDuration: String {
         let totalSeconds = max(0, Int(recordedDuration.rounded()))
@@ -578,9 +587,33 @@ private struct AudioRecorderSheet: View {
             errorMessage = error.localizedDescription
         }
 
+        #if canImport(AVFAudio)
+        if #available(iOS 17, *) {
+            let application = AVAudioApplication.shared
+            let permission = application.recordPermission
+            switch permission {
+            case .undetermined:
+                permissionStatus = .undetermined
+                application.requestRecordPermission { granted in
+                    DispatchQueue.main.async {
+                        permissionStatus = granted ? .granted : .denied
+                    }
+                }
+            case .granted:
+                permissionStatus = .granted
+            case .denied:
+                permissionStatus = .denied
+            @unknown default:
+                permissionStatus = .denied
+            }
+            return
+        }
+        #endif
+
         let permission = session.recordPermission
         switch permission {
         case .undetermined:
+            permissionStatus = .undetermined
             session.requestRecordPermission { granted in
                 DispatchQueue.main.async {
                     permissionStatus = granted ? .granted : .denied
