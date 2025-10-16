@@ -60,32 +60,15 @@ struct AuthView: View {
                 )
                 .shadow(color: ExplorerTheme.goldHighlightEnd.opacity(0.35), radius: 30, x: 0, y: 22)
 
-            VStack(alignment: .leading, spacing: 18) {
+            VStack(alignment: .center, spacing: 20) {
                 Image(systemName: "bolt.badge.a.fill")
                     .font(.system(size: 64, weight: .medium))
                     .foregroundStyle(ExplorerTheme.goldGradient)
                     .shadow(color: ExplorerTheme.goldHighlightEnd.opacity(0.5), radius: 20, x: 0, y: 14)
 
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("AITI Explorer Agent")
-                        .font(.explorer(.largeTitle, weight: .semibold))
-                        .foregroundStyle(ExplorerTheme.textPrimary)
-
-                    Text("Ein Workspace für deine Agents, Datenquellen und Integrationen – immer synchron und bereit für die nächste Mission.")
-                        .font(.explorer(.callout))
-                        .foregroundStyle(ExplorerTheme.textPrimary.opacity(0.86))
-                        .fixedSize(horizontal: false, vertical: true)
-
-                    VStack(alignment: .leading, spacing: 8) {
-                        featureRow(icon: "sparkles", text: "Gläserne Inbox mit Markdown- und Audio-Support")
-                        featureRow(icon: "bolt.fill", text: "Agenten in Echtzeit orchestrieren")
-                        featureRow(icon: "link", text: "Webhooks und Tools flexibel anbinden")
-                    }
-                }
-
                 Spacer(minLength: 0)
             }
-            .padding(36)
+            .padding(48)
         }
     }
 
