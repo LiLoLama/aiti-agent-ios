@@ -172,7 +172,7 @@ private struct AgentOverviewCard: View {
             HStack(alignment: .center, spacing: 16) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .fill(ExplorerTheme.surfaceElevated.opacity(0.9))
+                        .fill(AnyShapeStyle(ExplorerTheme.surfaceElevated.opacity(0.9)))
                         .overlay(
                             RoundedRectangle(cornerRadius: 20, style: .continuous)
                                 .stroke(ExplorerTheme.goldHighlightStart.opacity(0.25), lineWidth: 1)
@@ -223,13 +223,21 @@ private struct AgentOverviewCard: View {
         .padding(20)
         .background(
             RoundedRectangle(cornerRadius: 28, style: .continuous)
-                .fill(isSelected ? ExplorerTheme.goldGradient.opacity(0.14) : ExplorerTheme.surface.opacity(0.9))
+                .fill(backgroundFillStyle)
                 .overlay(
                     RoundedRectangle(cornerRadius: 28, style: .continuous)
                         .stroke(isSelected ? ExplorerTheme.goldHighlightStart.opacity(0.6) : ExplorerTheme.divider, lineWidth: isSelected ? 1.4 : 1)
                 )
         )
         .shadow(color: Color.black.opacity(isSelected ? 0.42 : 0.28), radius: isSelected ? 32 : 22, x: 0, y: isSelected ? 24 : 18)
+    }
+
+    private var backgroundFillStyle: AnyShapeStyle {
+        if isSelected {
+            return AnyShapeStyle(ExplorerTheme.goldGradient.opacity(0.14))
+        } else {
+            return AnyShapeStyle(ExplorerTheme.surface.opacity(0.9))
+        }
     }
 }
 

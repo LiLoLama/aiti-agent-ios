@@ -56,7 +56,7 @@ enum ExplorerTheme {
 
 extension Color {
     init(hex: String) {
-        var hexSanitized = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+        let hexSanitized = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
         var int: UInt64 = 0
         Scanner(string: hexSanitized).scanHexInt64(&int)
 

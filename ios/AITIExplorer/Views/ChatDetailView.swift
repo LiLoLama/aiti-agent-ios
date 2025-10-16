@@ -309,11 +309,19 @@ private struct ChatBubble: View {
                 )
             Image(systemName: message.author == .agent ? agent.avatarSystemName : "person.fill")
                 .font(.explorer(.callout, weight: .semibold))
-                .foregroundStyle(message.author == .agent ? ExplorerTheme.goldGradient : ExplorerTheme.textPrimary)
+                .foregroundStyle(avatarForegroundStyle)
         }
     }
 
-    private var bubbleBackground: some ShapeStyle {
+    private var avatarForegroundStyle: AnyShapeStyle {
+        if message.author == .agent {
+            return AnyShapeStyle(ExplorerTheme.goldGradient)
+        } else {
+            return AnyShapeStyle(ExplorerTheme.textPrimary)
+        }
+    }
+
+    private var bubbleBackground: AnyShapeStyle {
         if message.author == .agent {
             return AnyShapeStyle(
                 LinearGradient(
