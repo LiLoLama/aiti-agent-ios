@@ -27,7 +27,8 @@ struct MainTabView: View {
         TabView(selection: $appState.selectedTab) {
             ChatContainerView()
                 .tabItem {
-                    Label("Workspace", systemImage: "message.fill")
+                    Image(systemName: "message.fill")
+                        .accessibilityLabel("Workspace")
                 }
                 .tag(AppState.Tab.chat)
 

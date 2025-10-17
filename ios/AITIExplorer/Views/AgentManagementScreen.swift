@@ -210,8 +210,18 @@ struct AgentManagementScreen: View {
         }
 
         webhookStatus[id] = WebhookTestState(message: "Webhook Test wird gesendet …", isError: false, isLoading: true)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-            webhookStatus[id] = WebhookTestState(message: "Webhook erfolgreich simuliert!", isError: false, isLoading: false)
+
+        Task {
+            do {
+                let reply = try await WebhookClient.shared.testWebhook(for: agent)
+                await MainActor.run {
+                    webhookStatus[id] = WebhookTestState(message: reply.text, isError: false, isLoading: false)
+                }
+            } catch {
+                await MainActor.run {
+                    webhookStatus[id] = WebhookTestState(message: error.localizedDescription, isError: true, isLoading: false)
+                }
+            }
         }
     }
 

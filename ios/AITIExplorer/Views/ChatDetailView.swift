@@ -19,8 +19,6 @@ struct ChatDetailView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            ChatHeaderView(agent: agent)
-
             ScrollViewReader { proxy in
                 ScrollView(showsIndicators: false) {
                     LazyVStack(spacing: 20) {
@@ -44,7 +42,8 @@ struct ChatDetailView: View {
                             .frame(height: 1)
                             .id(bottomID)
                     }
-                    .padding(.vertical, 28)
+                    .padding(.top, 12)
+                    .padding(.bottom, 28)
                 }
                 .scrollDismissesKeyboard(.interactively)
                 .dismissFocusOnInteract($isComposerFocused)
@@ -83,6 +82,12 @@ struct ChatDetailView: View {
             .background(.ultraThinMaterial)
         }
         .explorerBackground()
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                ChatNavigationTitleView(agent: agent)
+            }
+        }
         .fileImporter(
             isPresented: $showingFileImporter,
             allowedContentTypes: [.item],
@@ -172,47 +177,38 @@ private extension ChatDetailView {
     }
 }
 
-private struct ChatHeaderView: View {
+private struct ChatNavigationTitleView: View {
     let agent: AgentProfile
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 14) {
-                ZStack {
-                    Circle()
-                        .fill(ExplorerTheme.surfaceElevated.opacity(0.9))
-                        .frame(width: 48, height: 48)
-                        .overlay(
-                            Circle()
-                                .stroke(ExplorerTheme.goldHighlightStart.opacity(0.3), lineWidth: 1)
-                        )
+        HStack(spacing: 12) {
+            ZStack {
+                Circle()
+                    .fill(ExplorerTheme.surfaceElevated.opacity(0.9))
+                    .frame(width: 40, height: 40)
+                    .overlay(
+                        Circle()
+                            .stroke(ExplorerTheme.goldHighlightStart.opacity(0.3), lineWidth: 1)
+                    )
 
-                    avatar
-                }
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(agent.name)
-                        .font(.explorer(.headline, weight: .semibold))
-                        .foregroundStyle(ExplorerTheme.textPrimary)
-
-                    Label(agent.status.description, systemImage: "circle.fill")
-                        .font(.explorer(.caption, weight: .semibold))
-                        .labelStyle(.titleAndIcon)
-                        .foregroundStyle(ExplorerTheme.success)
-                }
-
-                Spacer()
+                avatar
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(agent.name)
+                    .font(.explorer(.headline, weight: .semibold))
+                    .foregroundStyle(ExplorerTheme.textPrimary)
+
+                Label(agent.status.description, systemImage: "circle.fill")
+                    .font(.explorer(.caption2, weight: .semibold))
+                    .labelStyle(.titleAndIcon)
+                    .foregroundStyle(ExplorerTheme.success)
+            }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.ultraThinMaterial)
-        .overlay(Divider(), alignment: .bottom)
     }
 }
 
-private extension ChatHeaderView {
+private extension ChatNavigationTitleView {
     var avatar: some View {
         Group {
             if let data = agent.avatarImageData,
@@ -228,7 +224,7 @@ private extension ChatHeaderView {
                     .foregroundStyle(ExplorerTheme.goldGradient)
             }
         }
-        .frame(width: 48, height: 48)
+        .frame(width: 40, height: 40)
         .clipShape(Circle())
     }
 }
