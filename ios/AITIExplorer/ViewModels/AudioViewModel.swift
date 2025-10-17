@@ -220,14 +220,14 @@ final class AudioViewModel: NSObject, ObservableObject {
     }
 
     private func ensurePermission() async throws {
-        switch audioSession.recordPermission {
+        switch currentRecordPermission() {
         case .granted:
             return
         case .denied:
             throw RecorderError.permissionDenied
         case .undetermined:
             let granted = await withCheckedContinuation { continuation in
-                audioSession.requestRecordPermission { allowed in
+                requestRecordPermission { allowed in
                     continuation.resume(returning: allowed)
                 }
             }
@@ -277,15 +277,14 @@ final class AudioViewModel: NSObject, ObservableObject {
     private func startRecordingTimer() {
         recordingTimer?.invalidate()
         recordingTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
-            guard let self, let recorder = self.recorder else { return }
-            recorder.updateMeters()
-            let power = recorder.averagePower(forChannel: 0)
-            self.waveformLevel = self.normalizedPower(power)
-            self.recordingDuration = recorder.currentTime
+            Task { @MainActor [weak self] in
+                guard let self, let recorder = self.recorder else { return }
+                recorder.updateMeters()
+                let power = recorder.averagePower(forChannel: 0)
+                self.waveformLevel = self.normalizedPower(power)
+                self.recordingDuration = recorder.currentTime
 
-            if recorder.currentTime >= self.maxDuration {
-                Task { @MainActor [weak self] in
-                    guard let self else { return }
+                if recorder.currentTime >= self.maxDuration {
                     _ = self.stopRecording()
                     self.handleError(.maximumDurationReached)
                 }
@@ -299,8 +298,10 @@ final class AudioViewModel: NSObject, ObservableObject {
     private func startPlaybackTimer() {
         playbackTimer?.invalidate()
         playbackTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
-            guard let self, let player = self.player else { return }
-            self.playbackProgress = player.duration > 0 ? player.currentTime / player.duration : 0
+            Task { @MainActor [weak self] in
+                guard let self, let player = self.player else { return }
+                self.playbackProgress = player.duration > 0 ? player.currentTime / player.duration : 0
+            }
         }
         if let playbackTimer {
             RunLoop.main.add(playbackTimer, forMode: .common)
@@ -377,12 +378,21 @@ final class AudioViewModel: NSObject, ObservableObject {
               let reasonValue = userInfo[AVAudioSessionRouteChangeReasonKey] as? UInt,
               let reason = AVAudioSession.RouteChangeReason(rawValue: reasonValue) else { return }
 
+        let route = audioSession.currentRoute
+
         switch reason {
-        case .oldDeviceUnavailable, .categoryChange, .override:
+        case .oldDeviceUnavailable, .noSuitableRouteForCategory:
             if isRecording {
                 _ = stopRecording()
             }
             if isPlaying {
+                stopPlayback()
+            }
+        case .categoryChange, .override:
+            if route.inputs.isEmpty, isRecording {
+                _ = stopRecording()
+            }
+            if route.outputs.isEmpty, isPlaying {
                 stopPlayback()
             }
         default:
@@ -404,6 +414,35 @@ final class AudioViewModel: NSObject, ObservableObject {
         return min(max(level, 0), 1)
     }
 
+    private func currentRecordPermission() -> AVAudioSession.RecordPermission {
+        if #available(iOS 17, *) {
+            switch AVAudioApplication.shared.recordPermission {
+            case .undetermined:
+                return .undetermined
+            case .denied:
+                return .denied
+            case .granted:
+                return .granted
+            @unknown default:
+                return .undetermined
+            }
+        } else {
+            return audioSession.recordPermission
+        }
+    }
+
+    private func requestRecordPermission(_ handler: @escaping (Bool) -> Void) {
+        if #available(iOS 17, *) {
+            AVAudioApplication.requestRecordPermission { allowed in
+                handler(allowed)
+            }
+        } else {
+            audioSession.requestRecordPermission { allowed in
+                handler(allowed)
+            }
+        }
+    }
+
     private func cleanupTemporaryFiles() {
         let tempDirectory = fileManager.temporaryDirectory
         let expirationDate = Date().addingTimeInterval(-3 * 24 * 60 * 60)
@@ -423,52 +462,64 @@ final class AudioViewModel: NSObject, ObservableObject {
 }
 
 extension AudioViewModel: AVAudioRecorderDelegate {
-    func audioRecorderEncodeErrorDidOccur(_ recorder: AVAudioRecorder, error: Error?) {
-        if let error {
-            handleError(.recorderSetupFailed(underlying: error))
-        } else {
-            handleError(.recordingFailed)
+    nonisolated func audioRecorderEncodeErrorDidOccur(_ recorder: AVAudioRecorder, error: Error?) {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            if let error {
+                self.handleError(.recorderSetupFailed(underlying: error))
+            } else {
+                self.handleError(.recordingFailed)
+            }
+            _ = self.stopRecording()
         }
-        _ = stopRecording()
     }
 
-    func audioRecorderDidFinishRecording(_ recorder: AVAudioRecorder, successfully flag: Bool) {
-        recordingTimer?.invalidate()
-        recordingTimer = nil
-        waveformLevel = 0
-        if flag {
-            if let activeRecordingURL {
-                recordedURL = activeRecordingURL
+    nonisolated func audioRecorderDidFinishRecording(_ recorder: AVAudioRecorder, successfully flag: Bool) {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            self.recordingTimer?.invalidate()
+            self.recordingTimer = nil
+            self.waveformLevel = 0
+            if flag {
+                if let activeRecordingURL = self.activeRecordingURL {
+                    self.recordedURL = activeRecordingURL
+                }
+                self.activeRecordingURL = nil
+            } else {
+                self.handleError(.recordingFailed)
             }
-            activeRecordingURL = nil
-        } else {
-            handleError(.recordingFailed)
+            self.isRecording = false
         }
-        isRecording = false
     }
 }
 
 extension AudioViewModel: AVAudioPlayerDelegate {
-    func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
-        stopPlaybackTimer()
-        playbackProgress = 1
-        isPlaying = false
-        if !flag {
-            handleError(.playerSetupFailed(underlying: nil))
-        }
-        do {
-            try audioSession.setActive(false, options: [.notifyOthersOnDeactivation])
-        } catch {
-            // Ignore cleanup errors.
+    nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            self.stopPlaybackTimer()
+            self.playbackProgress = 1
+            self.isPlaying = false
+            if !flag {
+                self.handleError(.playerSetupFailed(underlying: nil))
+            }
+            do {
+                try self.audioSession.setActive(false, options: [.notifyOthersOnDeactivation])
+            } catch {
+                // Ignore cleanup errors.
+            }
         }
     }
 
-    func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
-        stopPlayback()
-        if let error {
-            handleError(.playerSetupFailed(underlying: error))
-        } else {
-            handleError(.playerSetupFailed(underlying: nil))
+    nonisolated func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            self.stopPlayback()
+            if let error {
+                self.handleError(.playerSetupFailed(underlying: error))
+            } else {
+                self.handleError(.playerSetupFailed(underlying: nil))
+            }
         }
     }
 }
