@@ -110,16 +110,16 @@ private extension SupabaseAuthService {
     }
 
     func resolveUserID(from response: AuthResponse) throws -> UUID {
-        if let userId = response.user?.id {
-            return userId
-        }
         if let sessionUser = response.session?.user {
             return sessionUser.id
         }
-        if let currentUser = client.auth.currentSession?.user ?? client.auth.currentUser {
+        if let currentSessionUser = client.auth.currentSession?.user {
+            return currentSessionUser.id
+        }
+        if let currentUser = client.auth.currentUser {
             return currentUser.id
         }
-        throw AuthServiceError.unknown(message: "Der Benutzer konnte nach der Anmeldung nicht ermittelt werden.")
+        return response.user.id
     }
 
     func resolveUserID(from session: Session) throws -> UUID {
