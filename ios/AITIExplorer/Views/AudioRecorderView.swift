@@ -1,7 +1,23 @@
 import SwiftUI
 
 struct AudioRecorderView: View {
-    @StateObject private var viewModel = AudioViewModel()
+    private let onRecordingConfirmed: ((URL) -> Void)?
+    private let autoStartRecording: Bool
+
+    @Environment(\.dismiss) private var dismiss
+    @StateObject private var viewModel: AudioViewModel
+    @State private var didAutoStart = false
+    @State private var shouldDiscardRecording = true
+
+    init(
+        viewModel: AudioViewModel = AudioViewModel(),
+        autoStartRecording: Bool = false,
+        onRecordingConfirmed: ((URL) -> Void)? = nil
+    ) {
+        _viewModel = StateObject(wrappedValue: viewModel)
+        self.autoStartRecording = autoStartRecording
+        self.onRecordingConfirmed = onRecordingConfirmed
+    }
 
     var body: some View {
         VStack(spacing: 24) {
@@ -110,6 +126,23 @@ struct AudioRecorderView: View {
                             .padding(.horizontal)
                     }
                     .padding(.top, 8)
+
+                    Button {
+                        viewModel.stopPlayback()
+                        shouldDiscardRecording = false
+                        onRecordingConfirmed?(recordedURL)
+                        dismiss()
+                    } label: {
+                        Label("Aufnahme anhängen", systemImage: "paperclip")
+                            .font(.headline)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 12)
+                            .frame(maxWidth: .infinity)
+                            .background(Color.accentColor.opacity(0.9))
+                            .foregroundStyle(Color.white)
+                            .clipShape(Capsule())
+                    }
+                    .padding(.top, 12)
                 }
 
                 if let errorMessage = viewModel.errorMessage {
@@ -135,6 +168,23 @@ struct AudioRecorderView: View {
             Spacer()
         }
         .padding()
+        .onAppear {
+            guard autoStartRecording, !didAutoStart else { return }
+            didAutoStart = true
+            viewModel.startRecording()
+        }
+        .onDisappear {
+            viewModel.stopPlayback()
+
+            if viewModel.isRecording {
+                let url = viewModel.stopRecording()
+                if shouldDiscardRecording, let url {
+                    try? FileManager.default.removeItem(at: url)
+                }
+            } else if shouldDiscardRecording, let url = viewModel.recordedURL {
+                try? FileManager.default.removeItem(at: url)
+            }
+        }
     }
 }
 
