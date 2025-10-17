@@ -54,21 +54,24 @@ struct ChatDetailView: View {
             }
         }
         .safeAreaInset(edge: .bottom) {
-            MessageComposer(
-                text: $draftedMessage,
-                attachments: $attachments,
-                onSend: { text, attachments in
-                    onSend(text, attachments)
-                    draftedMessage = ""
-                    self.attachments.removeAll()
-                },
-                onRequestFileAttachment: { showingFileImporter = true },
-                onRequestAudioAttachment: {},
-                isFocused: $isComposerFocused
-            )
-            .padding(.horizontal, 20)
-            .padding(.top, 12)
-            .padding(.bottom, 18)
+            VStack(spacing: 0) {
+                Divider()
+                MessageComposer(
+                    text: $draftedMessage,
+                    attachments: $attachments,
+                    onSend: { text, attachments in
+                        onSend(text, attachments)
+                        draftedMessage = ""
+                        self.attachments.removeAll()
+                    },
+                    onRequestFileAttachment: { showingFileImporter = true },
+                    onRequestAudioAttachment: {},
+                    isFocused: $isComposerFocused
+                )
+                .padding(.horizontal, 16)
+                .padding(.top, 10)
+                .padding(.bottom, 12)
+            }
             .background(.ultraThinMaterial)
         }
         .explorerBackground()
@@ -165,30 +168,26 @@ private struct ChatHeaderView: View {
     let agent: AgentProfile
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            HStack(alignment: .center, spacing: 16) {
+        VStack(spacing: 0) {
+            HStack(spacing: 14) {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
-                        .fill(ExplorerTheme.surfaceElevated.opacity(0.95))
+                    Circle()
+                        .fill(ExplorerTheme.surfaceElevated.opacity(0.9))
+                        .frame(width: 48, height: 48)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                .stroke(ExplorerTheme.goldHighlightStart.opacity(0.3), lineWidth: 1.2)
+                            Circle()
+                                .stroke(ExplorerTheme.goldHighlightStart.opacity(0.3), lineWidth: 1)
                         )
-                        .frame(width: 84, height: 84)
 
                     Image(systemName: agent.avatarSystemName)
-                        .font(.system(size: 38, weight: .medium))
+                        .font(.system(size: 22, weight: .medium))
                         .foregroundStyle(ExplorerTheme.goldGradient)
                 }
 
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 4) {
                     Text(agent.name)
-                        .font(.explorer(.title3, weight: .semibold))
+                        .font(.explorer(.headline, weight: .semibold))
                         .foregroundStyle(ExplorerTheme.textPrimary)
-
-                    Text(agent.role)
-                        .font(.explorer(.footnote))
-                        .foregroundStyle(ExplorerTheme.textSecondary)
 
                     Label(agent.status.description, systemImage: "circle.fill")
                         .font(.explorer(.caption, weight: .semibold))
@@ -198,61 +197,12 @@ private struct ChatHeaderView: View {
 
                 Spacer()
             }
-
-            if !agent.description.isEmpty {
-                Text(agent.description)
-                    .font(.explorer(.footnote))
-                    .foregroundStyle(ExplorerTheme.textSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-
-            AgentToolBadges(tools: agent.tools)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
         }
-        .padding(26)
-        .background(
-            RoundedRectangle(cornerRadius: 32, style: .continuous)
-                .fill(ExplorerTheme.surface.opacity(0.9))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 32, style: .continuous)
-                        .stroke(ExplorerTheme.goldHighlightStart.opacity(0.35), lineWidth: 1.1)
-                )
-        )
-        .padding(.horizontal, 20)
-        .padding(.top, 18)
-    }
-}
-
-private struct AgentToolBadges: View {
-    let tools: [AgentTool]
-
-    var body: some View {
-        if tools.isEmpty {
-            EmptyView()
-        } else {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 10) {
-                    ForEach(tools) { tool in
-                        HStack(spacing: 8) {
-                            Image(systemName: "wand.and.stars")
-                                .font(.explorer(.caption2, weight: .semibold))
-                            Text(tool.name)
-                                .font(.explorer(.caption))
-                        }
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 8)
-                        .background(
-                            Capsule()
-                                .fill(ExplorerTheme.goldGradient.opacity(0.16))
-                        )
-                        .overlay(
-                            Capsule()
-                                .stroke(ExplorerTheme.goldHighlightStart.opacity(0.55), lineWidth: 1)
-                        )
-                        .foregroundStyle(ExplorerTheme.textPrimary)
-                    }
-                }
-            }
-        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.ultraThinMaterial)
+        .overlay(Divider(), alignment: .bottom)
     }
 }
 
@@ -448,7 +398,7 @@ private struct MessageComposer: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 10) {
             if !attachments.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 12) {
@@ -462,61 +412,34 @@ private struct MessageComposer: View {
                 }
             }
 
-            HStack(alignment: .bottom, spacing: 14) {
+            HStack(alignment: .center, spacing: 12) {
                 Button(action: onRequestFileAttachment) {
-                    Image(systemName: "paperclip.circle.fill")
-                        .font(.system(size: 26, weight: .semibold))
-                        .foregroundStyle(ExplorerTheme.goldGradient)
-                        .frame(width: 48, height: 48)
-                        .background(
-                            Circle()
-                                .fill(ExplorerTheme.surfaceElevated.opacity(0.85))
-                        )
-                        .overlay(
-                            Circle()
-                                .stroke(ExplorerTheme.goldHighlightStart.opacity(0.35), lineWidth: 1)
-                        )
+                    circularAccessory(systemName: "paperclip")
                 }
                 .accessibilityLabel("Datei hinzufügen")
-
-                Button(action: onRequestAudioAttachment) {
-                    HStack(spacing: 10) {
-                        Image(systemName: "mic.fill")
-                            .font(.explorer(.callout, weight: .semibold))
-                            .foregroundStyle(Color.white)
-                        WaveformBars()
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 12)
-                    .background(
-                        Capsule()
-                            .fill(LinearGradient(colors: [Color(red: 1.0, green: 0.58, blue: 0.7), Color(red: 1.0, green: 0.32, blue: 0.52)], startPoint: .leading, endPoint: .trailing))
-                    )
-                    .overlay(
-                        Capsule()
-                            .stroke(Color.white.opacity(0.35), lineWidth: 1)
-                    )
-                    .shadow(color: Color(red: 1.0, green: 0.32, blue: 0.52).opacity(0.35), radius: 12, x: 0, y: 8)
-                }
-                .accessibilityLabel("Audio aufnehmen")
 
                 TextField("Nachricht schreiben …", text: $text, axis: .vertical)
                     .lineLimit(1...6)
                     .textInputAutocapitalization(.sentences)
                     .disableAutocorrection(false)
-                    .padding(.horizontal, 20)
-                    .padding(.vertical, 14)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 12)
                     .background(
-                        RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
                             .fill(ExplorerTheme.surface.opacity(0.85))
                     )
                     .overlay(
-                        RoundedRectangle(cornerRadius: 22, style: .continuous)
-                            .stroke(ExplorerTheme.goldHighlightStart.opacity(isFocused.wrappedValue ? 0.6 : 0.25), lineWidth: 1.2)
+                        RoundedRectangle(cornerRadius: 20, style: .continuous)
+                            .stroke(ExplorerTheme.goldHighlightStart.opacity(isFocused.wrappedValue ? 0.6 : 0.25), lineWidth: 1.1)
                     )
                     .font(.explorer(.callout))
                     .foregroundStyle(ExplorerTheme.textPrimary)
                     .focused(isFocused)
+
+                Button(action: onRequestAudioAttachment) {
+                    circularAccessory(systemName: "mic.fill")
+                }
+                .accessibilityLabel("Audio aufnehmen")
 
                 Button {
                     let message = trimmedText
@@ -526,29 +449,20 @@ private struct MessageComposer: View {
                     isFocused.wrappedValue = false
                 } label: {
                     Image(systemName: "paperplane.fill")
-                        .font(.system(size: 22, weight: .bold))
+                        .font(.system(size: 20, weight: .bold))
                         .foregroundStyle(Color.black)
-                        .frame(width: 52, height: 52)
+                        .frame(width: 48, height: 48)
                         .background(
                             Circle()
                                 .fill(ExplorerTheme.goldGradient)
                         )
-                        .shadow(color: ExplorerTheme.goldHighlightEnd.opacity(0.45), radius: 18, x: 0, y: 12)
+                        .shadow(color: ExplorerTheme.goldHighlightEnd.opacity(0.4), radius: 14, x: 0, y: 10)
                 }
                 .disabled(trimmedText.isEmpty && attachments.isEmpty)
                 .opacity(trimmedText.isEmpty && attachments.isEmpty ? 0.55 : 1)
             }
         }
-        .padding(18)
-        .background(
-            RoundedRectangle(cornerRadius: 32, style: .continuous)
-                .fill(Color.white.opacity(0.05))
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 32, style: .continuous))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 32, style: .continuous)
-                .stroke(ExplorerTheme.goldHighlightStart.opacity(0.25), lineWidth: 1)
-        )
+        .padding(.vertical, 2)
         .toolbar {
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
@@ -561,6 +475,21 @@ private struct MessageComposer: View {
 
     private func removeAttachment(_ attachment: ChatAttachment) {
         attachments.removeAll { $0.id == attachment.id }
+    }
+
+    private func circularAccessory(systemName: String) -> some View {
+        Image(systemName: systemName)
+            .font(.system(size: 18, weight: .semibold))
+            .foregroundStyle(ExplorerTheme.goldGradient)
+            .frame(width: 44, height: 44)
+            .background(
+                Circle()
+                    .fill(ExplorerTheme.surfaceElevated.opacity(0.9))
+            )
+            .overlay(
+                Circle()
+                    .stroke(ExplorerTheme.goldHighlightStart.opacity(0.35), lineWidth: 1)
+            )
     }
 }
 
@@ -601,31 +530,6 @@ private struct AttachmentComposerChip: View {
             RoundedRectangle(cornerRadius: 20, style: .continuous)
                 .stroke(ExplorerTheme.goldHighlightStart.opacity(0.25), lineWidth: 1)
         )
-    }
-}
-
-private struct WaveformBars: View {
-    @State private var phase: CGFloat = 0
-
-    var body: some View {
-        HStack(spacing: 3) {
-            ForEach(0..<5) { index in
-                Capsule()
-                    .fill(Color.white.opacity(0.9))
-                    .frame(width: 3, height: barHeight(for: index))
-            }
-        }
-        .onAppear {
-            withAnimation(.easeInOut(duration: 0.8).repeatForever(autoreverses: true)) {
-                phase = 1
-            }
-        }
-    }
-
-    private func barHeight(for index: Int) -> CGFloat {
-        let base: CGFloat = 10
-        let variation: CGFloat = [6, 14, 20, 14, 6][index]
-        return base + variation * abs(sin(Double(phase) + Double(index)))
     }
 }
 
