@@ -911,7 +911,7 @@ private struct MiniWaveformView: View {
                 : (isPlaying ? max(0.35 + clampedLevel * 0.35, 0.28) : 0.28)
 
             HStack(alignment: .center, spacing: 3) {
-                ForEach(0..<barCount, id: \.self) { index in
+                ForEach(Array(0..<barCount), id: \.self) { index in
                     let progress = CGFloat(index) / CGFloat(max(barCount - 1, 1))
                     let base = sin(progress * .pi)
                     let heightMultiplier = max(base * amplitude, 0.12)
