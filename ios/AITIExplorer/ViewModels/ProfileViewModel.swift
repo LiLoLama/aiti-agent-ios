@@ -10,6 +10,7 @@ final class ProfileViewModel: ObservableObject {
     @Published var avatarImageData: Data?
 
     private var appState: AppState?
+    private var toastDismissWorkItem: DispatchWorkItem?
 
     init(appState: AppState? = nil) {
         self.appState = appState
@@ -43,7 +44,7 @@ final class ProfileViewModel: ObservableObject {
         profile.agents = agents
         profile.avatarImageData = avatarImageData
         persistProfileChanges()
-        toastMessage = "Profil gespeichert"
+        showToast(message: "Profil gespeichert")
     }
 
     func addAgent(name: String, role: String, webhookURLString: String, tools: [AgentTool]) {
@@ -71,7 +72,7 @@ final class ProfileViewModel: ObservableObject {
     }
 
     func saveAgentChanges(showToast: Bool = false) {
-        persistAgents(showToast: showToast)
+        persistAgents(shouldShowToast: showToast)
     }
 }
 
@@ -80,11 +81,11 @@ private extension ProfileViewModel {
         appState?.updateCurrentUser(profile)
     }
 
-    func persistAgents(showToast: Bool = false) {
+    func persistAgents(shouldShowToast: Bool = false) {
         profile.agents = agents
         persistProfileChanges()
-        if showToast {
-            toastMessage = "Agents aktualisiert"
+        if shouldShowToast {
+            showToast(message: "Agents aktualisiert")
         }
     }
 
@@ -113,5 +114,23 @@ extension ProfileViewModel {
     func updateAvatar(with data: Data?) {
         avatarImageData = data
         profile.avatarImageData = data
+    }
+}
+
+private extension ProfileViewModel {
+    func showToast(message: String) {
+        toastDismissWorkItem?.cancel()
+        toastMessage = message
+
+        let workItem = DispatchWorkItem { [weak self] in
+            DispatchQueue.main.async {
+                if self?.toastMessage == message {
+                    self?.toastMessage = nil
+                }
+                self?.toastDismissWorkItem = nil
+            }
+        }
+        toastDismissWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2, execute: workItem)
     }
 }

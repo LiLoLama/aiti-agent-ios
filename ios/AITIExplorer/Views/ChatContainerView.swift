@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct ChatContainerView: View {
     @EnvironmentObject private var appState: AppState
@@ -59,6 +60,8 @@ struct ChatContainerView: View {
             if let agent = viewModel.selectedAgent {
                 ChatDetailView(
                     agent: agent,
+                    userAvatarImageData: appState.currentUser?.avatarImageData,
+                    userAvatarSystemName: appState.currentUser?.avatarSystemName ?? "person.fill",
                     draftedMessage: $draftedMessage,
                     onSend: { text, attachments in
                         viewModel.sendMessage(text, attachments: attachments)
@@ -101,6 +104,8 @@ struct ChatContainerView: View {
                 if let agent = viewModel.agents.first(where: { $0.id == id }) {
                     ChatDetailView(
                         agent: agent,
+                        userAvatarImageData: appState.currentUser?.avatarImageData,
+                        userAvatarSystemName: appState.currentUser?.avatarSystemName ?? "person.fill",
                         draftedMessage: $draftedMessage,
                         onSend: { text, attachments in
                             viewModel.sendMessage(text, attachments: attachments)
@@ -207,9 +212,7 @@ private struct AgentOverviewCard: View {
                         )
                         .frame(width: 64, height: 64)
 
-                    Image(systemName: agent.avatarSystemName)
-                        .font(.system(size: 28))
-                        .foregroundStyle(ExplorerTheme.goldGradient)
+                    avatarImage
                 }
 
                 VStack(alignment: .leading, spacing: 6) {
@@ -266,6 +269,27 @@ private struct AgentOverviewCard: View {
         } else {
             return AnyShapeStyle(ExplorerTheme.surface.opacity(0.9))
         }
+    }
+}
+
+private extension AgentOverviewCard {
+    var avatarImage: some View {
+        Group {
+            if let data = agent.avatarImageData,
+               let uiImage = UIImage(data: data) {
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                Image(systemName: agent.avatarSystemName)
+                    .resizable()
+                    .scaledToFit()
+                    .padding(14)
+                    .foregroundStyle(ExplorerTheme.goldGradient)
+            }
+        }
+        .frame(width: 64, height: 64)
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 }
 

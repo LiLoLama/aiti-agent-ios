@@ -1,9 +1,12 @@
 import SwiftUI
 import UniformTypeIdentifiers
 import AVFoundation
+import UIKit
 
 struct ChatDetailView: View {
     let agent: AgentProfile
+    let userAvatarImageData: Data?
+    let userAvatarSystemName: String
     @Binding var draftedMessage: String
     var onSend: (String, [ChatAttachment]) -> Void
     var pendingResponse: Bool
@@ -22,7 +25,12 @@ struct ChatDetailView: View {
                 ScrollView(showsIndicators: false) {
                     LazyVStack(spacing: 20) {
                         ForEach(agent.conversation.messages) { message in
-                            ChatBubble(message: message, agent: agent)
+                            ChatBubble(
+                                message: message,
+                                agent: agent,
+                                userAvatarImageData: userAvatarImageData,
+                                userAvatarSystemName: userAvatarSystemName
+                            )
                                 .padding(.horizontal, 20)
                                 .padding(.top, message.author == .agent ? 0 : 6)
                         }
@@ -75,6 +83,7 @@ struct ChatDetailView: View {
             .background(.ultraThinMaterial)
         }
         .explorerBackground()
+        .ignoresSafeArea(.keyboard, edges: .bottom)
         .fileImporter(
             isPresented: $showingFileImporter,
             allowedContentTypes: [.item],
@@ -179,9 +188,7 @@ private struct ChatHeaderView: View {
                                 .stroke(ExplorerTheme.goldHighlightStart.opacity(0.3), lineWidth: 1)
                         )
 
-                    Image(systemName: agent.avatarSystemName)
-                        .font(.system(size: 22, weight: .medium))
-                        .foregroundStyle(ExplorerTheme.goldGradient)
+                    avatar
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
@@ -206,9 +213,32 @@ private struct ChatHeaderView: View {
     }
 }
 
+private extension ChatHeaderView {
+    var avatar: some View {
+        Group {
+            if let data = agent.avatarImageData,
+               let uiImage = UIImage(data: data) {
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                Image(systemName: agent.avatarSystemName)
+                    .resizable()
+                    .scaledToFit()
+                    .padding(10)
+                    .foregroundStyle(ExplorerTheme.goldGradient)
+            }
+        }
+        .frame(width: 48, height: 48)
+        .clipShape(Circle())
+    }
+}
+
 private struct ChatBubble: View {
     let message: ChatMessage
     let agent: AgentProfile
+    let userAvatarImageData: Data?
+    let userAvatarSystemName: String
 
     var body: some View {
         HStack(alignment: .bottom, spacing: 16) {
@@ -257,17 +287,41 @@ private struct ChatBubble: View {
                     Circle()
                         .stroke(ExplorerTheme.goldHighlightStart.opacity(0.25), lineWidth: 1)
                 )
-            Image(systemName: message.author == .agent ? agent.avatarSystemName : "person.fill")
-                .font(.explorer(.callout, weight: .semibold))
-                .foregroundStyle(avatarForegroundStyle)
+            avatarImage
+                .frame(width: 44, height: 44)
+                .clipShape(Circle())
         }
     }
 
-    private var avatarForegroundStyle: AnyShapeStyle {
-        if message.author == .agent {
-            return AnyShapeStyle(ExplorerTheme.goldGradient)
-        } else {
-            return AnyShapeStyle(ExplorerTheme.textPrimary)
+    private var avatarImage: some View {
+        Group {
+            if message.author == .agent {
+                if let data = agent.avatarImageData,
+                   let uiImage = UIImage(data: data) {
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .scaledToFill()
+                } else {
+                    Image(systemName: agent.avatarSystemName)
+                        .resizable()
+                        .scaledToFit()
+                        .padding(10)
+                        .foregroundStyle(ExplorerTheme.goldGradient)
+                }
+            } else {
+                if let data = userAvatarImageData,
+                   let uiImage = UIImage(data: data) {
+                    Image(uiImage: uiImage)
+                        .resizable()
+                        .scaledToFill()
+                } else {
+                    Image(systemName: userAvatarSystemName)
+                        .resizable()
+                        .scaledToFit()
+                        .padding(10)
+                        .foregroundStyle(ExplorerTheme.textPrimary)
+                }
+            }
         }
     }
 
@@ -536,6 +590,8 @@ private struct AttachmentComposerChip: View {
 #Preview {
     ChatDetailView(
         agent: SampleData.previewUser.agents.first!,
+        userAvatarImageData: SampleData.previewUser.avatarImageData,
+        userAvatarSystemName: SampleData.previewUser.avatarSystemName,
         draftedMessage: .constant(""),
         onSend: { _, _ in },
         pendingResponse: true

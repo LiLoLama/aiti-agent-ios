@@ -48,6 +48,7 @@ struct AgentProfile: Identifiable, Codable, Hashable {
     var description: String
     var status: AgentStatus
     var avatarSystemName: String
+    var avatarImageData: Data?
     var conversation: Conversation
     var webhookURL: URL?
     var tools: [AgentTool]
@@ -59,6 +60,7 @@ struct AgentProfile: Identifiable, Codable, Hashable {
         description: String,
         status: AgentStatus = .online,
         avatarSystemName: String = "bolt.fill",
+        avatarImageData: Data? = nil,
         conversation: Conversation,
         webhookURL: URL? = nil,
         tools: [AgentTool] = []
@@ -69,6 +71,7 @@ struct AgentProfile: Identifiable, Codable, Hashable {
         self.description = description
         self.status = status
         self.avatarSystemName = avatarSystemName
+        self.avatarImageData = avatarImageData
         self.conversation = conversation
         self.webhookURL = webhookURL
         self.tools = tools
@@ -81,6 +84,7 @@ struct AgentProfile: Identifiable, Codable, Hashable {
         case description
         case status
         case avatarSystemName
+        case avatarImageData
         case conversation
         case webhookURL
         case tools
@@ -94,6 +98,7 @@ struct AgentProfile: Identifiable, Codable, Hashable {
         description = try container.decode(String.self, forKey: .description)
         status = try container.decode(AgentStatus.self, forKey: .status)
         avatarSystemName = try container.decode(String.self, forKey: .avatarSystemName)
+        avatarImageData = try container.decodeIfPresent(Data.self, forKey: .avatarImageData)
         conversation = try container.decode(Conversation.self, forKey: .conversation)
         webhookURL = try container.decodeIfPresent(URL.self, forKey: .webhookURL)
         tools = try container.decodeIfPresent([AgentTool].self, forKey: .tools) ?? []
@@ -107,6 +112,7 @@ struct AgentProfile: Identifiable, Codable, Hashable {
         try container.encode(description, forKey: .description)
         try container.encode(status, forKey: .status)
         try container.encode(avatarSystemName, forKey: .avatarSystemName)
+        try container.encodeIfPresent(avatarImageData, forKey: .avatarImageData)
         try container.encode(conversation, forKey: .conversation)
         try container.encodeIfPresent(webhookURL, forKey: .webhookURL)
         try container.encode(tools, forKey: .tools)
