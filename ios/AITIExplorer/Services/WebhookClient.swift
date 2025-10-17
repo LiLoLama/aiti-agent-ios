@@ -237,7 +237,11 @@ private struct ChatWebhookPayload: Encodable {
         self.agent = AgentPayload(id: agent.id, name: agent.name, role: agent.role, description: agent.description)
         let currentMessage = try await MessagePayload(message: message, collectBinary: true)
         self.message = currentMessage
-        self.conversation = try await conversation.asyncMap { try await MessagePayload(message: $0, collectBinary: false) }
+        if let latestMessage = conversation.last {
+            self.conversation = [try await MessagePayload(message: latestMessage, collectBinary: false)]
+        } else {
+            self.conversation = [try await MessagePayload(message: message, collectBinary: false)]
+        }
         self.sentAt = Date()
         self.binaryAttachments = currentMessage.binaryAttachments
     }
@@ -348,14 +352,3 @@ private struct WebhookTestPayload: Encodable {
     }
 }
 
-private extension Array {
-    func asyncMap<T>(_ transform: (Element) async throws -> T) async throws -> [T] {
-        var values: [T] = []
-        values.reserveCapacity(count)
-        for element in self {
-            let value = try await transform(element)
-            values.append(value)
-        }
-        return values
-    }
-}
