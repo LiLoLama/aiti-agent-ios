@@ -39,39 +39,44 @@ final class AuthViewModel: ObservableObject {
     }
 
     func submit() {
+        guard !isProcessing else { return }
         isProcessing = true
         errorMessage = nil
 
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+        Task { [weak self] in
             guard let self else { return }
 
             do {
                 switch self.mode {
                 case .login:
                     guard let appState = self.appState else { throw AuthLifecycleError.missingAppState }
-                    try appState.login(email: self.email, password: self.password)
+                    try await appState.login(email: self.email, password: self.password)
                 case .register:
                     guard self.password == self.confirmPassword else {
                         throw RegistrationError.passwordMismatch
                     }
                     guard let appState = self.appState else { throw AuthLifecycleError.missingAppState }
-                    try appState.register(name: self.name, email: self.email, password: self.password)
+                    try await appState.register(name: self.name, email: self.email, password: self.password)
                 }
             } catch let error as RegistrationError {
-                DispatchQueue.main.async {
+                await MainActor.run {
                     self.errorMessage = error.localizedDescription
                 }
-            } catch let error as AppState.AuthError {
-                DispatchQueue.main.async {
+            } catch let error as AuthServiceError {
+                await MainActor.run {
+                    self.errorMessage = error.localizedDescription
+                }
+            } catch let error as AuthLifecycleError {
+                await MainActor.run {
                     self.errorMessage = error.localizedDescription
                 }
             } catch {
-                DispatchQueue.main.async {
+                await MainActor.run {
                     self.errorMessage = "Es ist ein unbekannter Fehler aufgetreten."
                 }
             }
 
-            DispatchQueue.main.async {
+            await MainActor.run {
                 self.isProcessing = false
             }
         }
