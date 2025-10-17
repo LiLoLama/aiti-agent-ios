@@ -52,11 +52,11 @@ struct ProfileScreen: View {
             guard let item = newValue else { return }
             Task {
                 if let data = try? await item.loadTransferable(type: Data.self) {
-                    await MainActor {
+                    await MainActor.run {
                         viewModel.updateAvatar(with: data)
                     }
                 }
-                await MainActor {
+                await MainActor.run {
                     selectedPhotoItem = nil
                 }
             }
