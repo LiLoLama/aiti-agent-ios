@@ -32,6 +32,6 @@
         <string>Fonts/Inter-SemiBold.ttf</string>
     </array>
     <key>NSMicrophoneUsageDescription</key>
-    <string>This app uses the microphone to record voice messages when you tap the microphone button.</string>
+    <string>Diese App benötigt Zugriff auf das Mikrofon, um Audio aufzunehmen.</string>
 </dict>
 </plist>
