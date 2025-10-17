@@ -923,7 +923,7 @@ private struct MiniWaveformView: View {
             HStack(alignment: .center, spacing: 3) {
                 ForEach(bars) { bar in
                     RoundedRectangle(cornerRadius: 2)
-                        .fill(barFillColor)
+                        .fill(barFillStyle)
                         .frame(height: barHeight(for: bar, amplitude: amplitude, containerHeight: proxy.size.height))
                         .opacity(barOpacity)
                 }
@@ -935,15 +935,17 @@ private struct MiniWaveformView: View {
 }
 
 private extension MiniWaveformView {
-    var barFillColor: some ShapeStyle {
-        isRecording ? Color.red.opacity(0.85) : ExplorerTheme.goldGradient
+    private var barFillStyle: AnyShapeStyle {
+        isRecording
+            ? AnyShapeStyle(Color.red.opacity(0.85))
+            : AnyShapeStyle(ExplorerTheme.goldGradient)
     }
 
-    var barOpacity: Double {
+    private var barOpacity: Double {
         isRecording ? 0.95 : (isPlaying ? 0.9 : 0.75)
     }
 
-    func barHeight(for bar: WaveformBar, amplitude: CGFloat, containerHeight: CGFloat) -> CGFloat {
+    private func barHeight(for bar: WaveformBar, amplitude: CGFloat, containerHeight: CGFloat) -> CGFloat {
         let base = sin(bar.progress * .pi)
         let heightMultiplier = max(base * amplitude, 0.12)
         return max(containerHeight * heightMultiplier, 4)
