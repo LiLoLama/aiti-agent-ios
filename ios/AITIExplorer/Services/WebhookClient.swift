@@ -1,4 +1,5 @@
 import Foundation
+import UniformTypeIdentifiers
 
 struct WebhookReply {
     let text: String
@@ -57,7 +58,12 @@ final class WebhookClient {
             throw WebhookError.encoding(error)
         }
 
-        return try await performRequest(url: agent.webhookURL, payload: payload, defaultSuccessMessage: "Webhook hat keine Nachricht zurückgesendet.")
+        return try await performRequest(
+            url: agent.webhookURL,
+            payload: payload,
+            defaultSuccessMessage: "Webhook hat keine Nachricht zurückgesendet.",
+            binaryAttachments: payload.binaryAttachments
+        )
     }
 
     func testWebhook(for agent: AgentProfile) async throws -> WebhookReply {
@@ -71,20 +77,58 @@ final class WebhookClient {
 }
 
 private extension WebhookClient {
-    func performRequest<Payload: Encodable>(url: URL?, payload: Payload, defaultSuccessMessage: String) async throws -> WebhookReply {
+    func performRequest<Payload: Encodable>(
+        url: URL?,
+        payload: Payload,
+        defaultSuccessMessage: String,
+        binaryAttachments: [WebhookBinaryAttachment] = []
+    ) async throws -> WebhookReply {
         guard let url else {
             throw WebhookError.missingURL
         }
 
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        do {
-            request.httpBody = try encoder.encode(payload)
-        } catch {
-            throw WebhookError.encoding(error)
+        let bodyData: Data
+        if binaryAttachments.isEmpty {
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            do {
+                bodyData = try encoder.encode(payload)
+            } catch {
+                throw WebhookError.encoding(error)
+            }
+        } else {
+            let boundary = "Boundary-\(UUID().uuidString)"
+            request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+
+            let jsonData: Data
+            do {
+                jsonData = try encoder.encode(payload)
+            } catch {
+                throw WebhookError.encoding(error)
+            }
+
+            var multipartBody = Data()
+            multipartBody.append("--\(boundary)\r\n")
+            multipartBody.append("Content-Disposition: form-data; name=\"payload\"\r\n")
+            multipartBody.append("Content-Type: application/json; charset=utf-8\r\n\r\n")
+            multipartBody.append(jsonData)
+            multipartBody.append("\r\n")
+
+            for attachment in binaryAttachments {
+                multipartBody.append("--\(boundary)\r\n")
+                multipartBody.append("Content-Disposition: form-data; name=\"\(attachment.fieldName)\"; filename=\"\(attachment.filename)\"\r\n")
+                multipartBody.append("Content-Type: \(attachment.mimeType)\r\n\r\n")
+                multipartBody.append(attachment.data)
+                multipartBody.append("\r\n")
+            }
+
+            multipartBody.append("--\(boundary)--\r\n")
+            bodyData = multipartBody
         }
+
+        request.httpBody = bodyData
 
         do {
             let (data, response) = try await session.data(for: request)
@@ -150,6 +194,15 @@ private struct ChatWebhookPayload: Encodable {
         let content: String
         let timestamp: Date
         let attachments: [AttachmentPayload]
+        let binaryAttachments: [WebhookBinaryAttachment]
+
+        private enum CodingKeys: String, CodingKey {
+            case id
+            case author
+            case content
+            case timestamp
+            case attachments
+        }
     }
 
     struct AttachmentPayload: Encodable {
@@ -160,33 +213,69 @@ private struct ChatWebhookPayload: Encodable {
         let kind: String
         let durationSeconds: Int?
         let data: String?
+        let binaryFieldName: String?
+
+        private enum CodingKeys: String, CodingKey {
+            case id
+            case name
+            case size
+            case type
+            case kind
+            case durationSeconds
+            case data
+            case binaryFieldName
+        }
     }
 
     let agent: AgentPayload
     let message: MessagePayload
     let conversation: [MessagePayload]
     let sentAt: Date
+    let binaryAttachments: [WebhookBinaryAttachment]
 
     init(agent: AgentProfile, message: ChatMessage, conversation: [ChatMessage]) async throws {
         self.agent = AgentPayload(id: agent.id, name: agent.name, role: agent.role, description: agent.description)
-        self.message = try await MessagePayload(message: message)
-        self.conversation = try await conversation.asyncMap { try await MessagePayload(message: $0) }
+        let currentMessage = try await MessagePayload(message: message, collectBinary: true)
+        self.message = currentMessage
+        self.conversation = try await conversation.asyncMap { try await MessagePayload(message: $0, collectBinary: false) }
         self.sentAt = Date()
+        self.binaryAttachments = currentMessage.binaryAttachments
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case agent
+        case message
+        case conversation
+        case sentAt
     }
 }
 
 private extension ChatWebhookPayload.MessagePayload {
-    init(message: ChatMessage) async throws {
+    init(message: ChatMessage, collectBinary: Bool) async throws {
         self.id = message.id
         self.author = message.author.rawValue
         self.content = message.content
         self.timestamp = message.timestamp
-        self.attachments = try await message.attachments.asyncMap { try await ChatWebhookPayload.AttachmentPayload(attachment: $0) }
+
+        var builtAttachments: [AttachmentPayload] = []
+        var binaries: [WebhookBinaryAttachment] = []
+        for (index, attachment) in message.attachments.enumerated() {
+            let payload = try await ChatWebhookPayload.AttachmentPayload(
+                attachment: attachment,
+                includeBinary: collectBinary,
+                index: index,
+                binaryCollector: &binaries
+            )
+            builtAttachments.append(payload)
+        }
+
+        self.attachments = builtAttachments
+        self.binaryAttachments = binaries
     }
 }
 
 private extension ChatWebhookPayload.AttachmentPayload {
-    init(attachment: ChatAttachment) async throws {
+    init(attachment: ChatAttachment, includeBinary: Bool, index: Int, binaryCollector: inout [WebhookBinaryAttachment]) async throws {
         self.id = attachment.id
         self.name = attachment.name
         self.size = attachment.size
@@ -195,12 +284,48 @@ private extension ChatWebhookPayload.AttachmentPayload {
         self.durationSeconds = attachment.durationSeconds
 
         if let url = attachment.url {
-            self.data = try await Task.detached(priority: .userInitiated) {
-                let data = try Data(contentsOf: url)
-                return data.base64EncodedString()
+            let rawData = try await Task.detached(priority: .userInitiated) {
+                try Data(contentsOf: url)
             }.value
+            self.data = rawData.base64EncodedString()
+
+            if includeBinary {
+                let fieldName = "file\(index)"
+                let resolvedType = UTType(mimeType: attachment.type)
+                    ?? UTType(attachment.type)
+                    ?? UTType(filenameExtension: URL(fileURLWithPath: attachment.name).pathExtension)
+                let mimeType = resolvedType?.preferredMIMEType
+                    ?? (attachment.type.contains("/") ? attachment.type : "application/octet-stream")
+
+                let binary = WebhookBinaryAttachment(
+                    fieldName: fieldName,
+                    filename: attachment.name,
+                    mimeType: mimeType,
+                    data: rawData
+                )
+                binaryCollector.append(binary)
+                self.binaryFieldName = fieldName
+            } else {
+                self.binaryFieldName = nil
+            }
         } else {
             self.data = nil
+            self.binaryFieldName = nil
+        }
+    }
+}
+
+private struct WebhookBinaryAttachment {
+    let fieldName: String
+    let filename: String
+    let mimeType: String
+    let data: Data
+}
+
+private extension Data {
+    mutating func append(_ string: String) {
+        if let data = string.data(using: .utf8) {
+            append(data)
         }
     }
 }
