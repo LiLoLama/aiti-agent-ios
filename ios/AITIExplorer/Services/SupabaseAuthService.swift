@@ -241,7 +241,7 @@ extension SupabaseAuthService {
             let rows: [ProfileRow] = try await client.database
                 .from("profiles")
                 .select()
-                .order(column: "name", ascending: true)
+                .order("name", ascending: true)
                 .execute()
                 .value
 
