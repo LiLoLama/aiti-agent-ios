@@ -14,7 +14,7 @@ final class ProfileViewModel: ObservableObject {
 
     init(appState: AppState? = nil) {
         self.appState = appState
-        let profile = appState?.currentUser ?? SampleData.previewUser
+        let profile = appState?.currentUser ?? SampleData.baseUserProfile
         self.profile = profile
         self.draftName = profile.name
         self.draftBio = profile.bio

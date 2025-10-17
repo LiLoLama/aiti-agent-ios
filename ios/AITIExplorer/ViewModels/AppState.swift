@@ -49,7 +49,7 @@ final class AppState: ObservableObject {
             throw AuthError.emailAlreadyRegistered
         }
 
-        var newProfile = SampleData.previewUser
+        var newProfile = SampleData.baseUserProfile
         newProfile.id = UUID()
         newProfile.name = name
         newProfile.email = email
