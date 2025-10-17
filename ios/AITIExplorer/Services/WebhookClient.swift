@@ -1,3 +1,4 @@
+import CoreFoundation
 import Foundation
 import UniformTypeIdentifiers
 
@@ -102,19 +103,21 @@ private extension WebhookClient {
             let boundary = "Boundary-\(UUID().uuidString)"
             request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
 
-            let jsonData: Data
+            var multipartBody = Data()
+
+            let formFields: [WebhookFormField]
             do {
-                jsonData = try encoder.encode(payload)
+                formFields = try makeFormFields(from: payload)
             } catch {
                 throw WebhookError.encoding(error)
             }
 
-            var multipartBody = Data()
-            multipartBody.append("--\(boundary)\r\n")
-            multipartBody.append("Content-Disposition: form-data; name=\"payload\"\r\n")
-            multipartBody.append("Content-Type: application/json; charset=utf-8\r\n\r\n")
-            multipartBody.append(jsonData)
-            multipartBody.append("\r\n")
+            for field in formFields {
+                multipartBody.append("--\(boundary)\r\n")
+                multipartBody.append("Content-Disposition: form-data; name=\"\(field.name)\"\r\n\r\n")
+                multipartBody.append(field.value)
+                multipartBody.append("\r\n")
+            }
 
             for attachment in binaryAttachments {
                 multipartBody.append("--\(boundary)\r\n")
@@ -159,6 +162,70 @@ private extension WebhookClient {
         } catch {
             throw WebhookError.transport(error)
         }
+    }
+
+    func makeFormFields<Payload: Encodable>(from payload: Payload) throws -> [WebhookFormField] {
+        let encoded = try encoder.encode(payload)
+        let jsonObject = try JSONSerialization.jsonObject(with: encoded, options: [])
+
+        guard let dictionary = jsonObject as? [String: Any] else {
+            throw WebhookFormEncodingError(reason: "Webhook payload must encode into a JSON object.")
+        }
+
+        return try flattenFormFields(from: dictionary, prefix: nil)
+    }
+
+    func flattenFormFields(from value: Any, prefix: String?) throws -> [WebhookFormField] {
+        switch value {
+        case let dictionary as [String: Any]:
+            var fields: [WebhookFormField] = []
+            for key in dictionary.keys.sorted() {
+                guard let nestedValue = dictionary[key] else {
+                    continue
+                }
+
+                let nextPrefix = prefix.map { "\($0)[\(key)]" } ?? key
+                let nestedFields = try flattenFormFields(from: nestedValue, prefix: nextPrefix)
+                fields.append(contentsOf: nestedFields)
+            }
+            return fields
+        case let array as [Any]:
+            guard let prefix else {
+                throw WebhookFormEncodingError(reason: "Array encountered without a parent key while building webhook form fields.")
+            }
+
+            var fields: [WebhookFormField] = []
+            for (index, element) in array.enumerated() {
+                let nextPrefix = "\(prefix)[\(index)]"
+                let nestedFields = try flattenFormFields(from: element, prefix: nextPrefix)
+                fields.append(contentsOf: nestedFields)
+            }
+            return fields
+        case is NSNull:
+            return []
+        default:
+            guard let prefix else {
+                throw WebhookFormEncodingError(reason: "Value encountered without a key while building webhook form fields.")
+            }
+
+            let stringValue = try stringValue(for: value)
+            return [WebhookFormField(name: prefix, value: stringValue)]
+        }
+    }
+
+    func stringValue(for value: Any) throws -> String {
+        if let string = value as? String {
+            return string
+        }
+
+        if let number = value as? NSNumber {
+            if CFGetTypeID(number) == CFBooleanGetTypeID() {
+                return number.boolValue ? "true" : "false"
+            }
+            return number.stringValue
+        }
+
+        throw WebhookFormEncodingError(reason: "Unsupported value \(value) encountered while building webhook form fields.")
     }
 }
 
@@ -320,6 +387,19 @@ private struct WebhookBinaryAttachment {
     let filename: String
     let mimeType: String
     let data: Data
+}
+
+private struct WebhookFormField {
+    let name: String
+    let value: String
+}
+
+private struct WebhookFormEncodingError: LocalizedError {
+    let reason: String
+
+    var errorDescription: String? {
+        reason
+    }
 }
 
 private extension Data {
