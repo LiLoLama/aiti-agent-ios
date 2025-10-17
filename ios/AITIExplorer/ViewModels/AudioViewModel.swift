@@ -378,12 +378,21 @@ final class AudioViewModel: NSObject, ObservableObject {
               let reasonValue = userInfo[AVAudioSessionRouteChangeReasonKey] as? UInt,
               let reason = AVAudioSession.RouteChangeReason(rawValue: reasonValue) else { return }
 
+        let route = audioSession.currentRoute
+
         switch reason {
-        case .oldDeviceUnavailable, .categoryChange, .override:
+        case .oldDeviceUnavailable, .noSuitableRoute:
             if isRecording {
                 _ = stopRecording()
             }
             if isPlaying {
+                stopPlayback()
+            }
+        case .categoryChange, .override:
+            if route.inputs.isEmpty, isRecording {
+                _ = stopRecording()
+            }
+            if route.outputs.isEmpty, isPlaying {
                 stopPlayback()
             }
         default:
