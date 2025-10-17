@@ -20,8 +20,8 @@ final class SupabaseAuthService: AuthServicing {
 
     func login(email: String, password: String) async throws -> UserProfile {
         do {
-            let response = try await client.auth.signIn(email: email, password: password)
-            let userId = try resolveUserID(from: response)
+            let session = try await client.auth.signIn(email: email, password: password)
+            let userId = try resolveUserID(from: session)
             return try await fetchProfile(for: userId, emailFallback: email)
         } catch {
             throw map(error)
@@ -30,7 +30,12 @@ final class SupabaseAuthService: AuthServicing {
 
     func register(name: String, email: String, password: String) async throws -> UserProfile {
         do {
-            let response = try await client.auth.signUp(email: email, password: password, data: ["name": name])
+            let metadata: [String: AnyJSON] = ["name": .string(name)]
+            let response = try await client.auth.signUp(
+                email: email,
+                password: password,
+                data: metadata
+            )
             let userId = try resolveUserID(from: response)
 
             let profile = UserProfile(id: userId, name: name, email: email)
@@ -108,8 +113,17 @@ private extension SupabaseAuthService {
         if let userId = response.user?.id {
             return userId
         }
-        if let currentUser = client.auth.currentUser { return currentUser.id }
+        if let sessionUser = response.session?.user {
+            return sessionUser.id
+        }
+        if let currentUser = client.auth.currentSession?.user ?? client.auth.currentUser {
+            return currentUser.id
+        }
         throw AuthServiceError.unknown(message: "Der Benutzer konnte nach der Anmeldung nicht ermittelt werden.")
+    }
+
+    func resolveUserID(from session: Session) throws -> UUID {
+        return session.user.id
     }
 
     func fetchProfile(for userId: UUID, emailFallback: String) async throws -> UserProfile {
