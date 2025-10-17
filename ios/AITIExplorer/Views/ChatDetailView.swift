@@ -2,6 +2,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 import AVFoundation
 import UIKit
+import PhotosUI
 
 struct ChatDetailView: View {
     let agent: AgentProfile
@@ -15,6 +16,9 @@ struct ChatDetailView: View {
     @FocusState private var isComposerFocused: Bool
     @State private var attachments: [ChatAttachment] = []
     @State private var showingFileImporter = false
+    @State private var showingAttachmentSourceDialog = false
+    @State private var showingPhotoPicker = false
+    @State private var selectedPhotoPickerItem: PhotosPickerItem?
     @State private var attachmentError: String?
 
     var body: some View {
@@ -71,7 +75,7 @@ struct ChatDetailView: View {
                         draftedMessage = ""
                         self.attachments.removeAll()
                     },
-                    onRequestFileAttachment: { showingFileImporter = true },
+                    onRequestFileAttachment: { showingAttachmentSourceDialog = true },
                     onRequestAudioAttachment: {},
                     isFocused: $isComposerFocused
                 )
@@ -88,12 +92,40 @@ struct ChatDetailView: View {
                 ChatNavigationTitleView(agent: agent)
             }
         }
+        .confirmationDialog(
+            "Anhang hinzufügen",
+            isPresented: $showingAttachmentSourceDialog,
+            titleVisibility: .visible
+        ) {
+            Button("Foto-Mediathek") {
+                showingPhotoPicker = true
+            }
+            Button("Dateien") {
+                showingFileImporter = true
+            }
+            Button("Abbrechen", role: .cancel) {}
+        }
         .fileImporter(
             isPresented: $showingFileImporter,
             allowedContentTypes: [.item],
             allowsMultipleSelection: false
         ) { result in
             handleFileImport(result: result)
+        }
+        .photosPicker(
+            isPresented: $showingPhotoPicker,
+            selection: $selectedPhotoPickerItem,
+            matching: .images
+        )
+        .onChange(of: selectedPhotoPickerItem) { _, newValue in
+            guard let item = newValue else { return }
+            Task {
+                await handlePhotoSelection(item)
+                await MainActor.run {
+                    selectedPhotoPickerItem = nil
+                    showingPhotoPicker = false
+                }
+            }
         }
         .alert("Datei konnte nicht hinzugefügt werden", isPresented: Binding(
             get: { attachmentError != nil },
@@ -168,6 +200,43 @@ private extension ChatDetailView {
 
             await MainActor.run {
                 attachments.append(attachment)
+            }
+        } catch {
+            await MainActor.run {
+                attachmentError = error.localizedDescription
+            }
+        }
+    }
+
+    func handlePhotoSelection(_ item: PhotosPickerItem) async {
+        do {
+            if let data = try await item.loadTransferable(type: Data.self) {
+                let contentType = item.supportedContentTypes.first
+                let fileExtension = contentType?.preferredFilenameExtension ?? "dat"
+                let fileName = "Foto.\(fileExtension)"
+                let tempURL = FileManager.default.temporaryDirectory
+                    .appendingPathComponent(UUID().uuidString)
+                    .appendingPathExtension(fileExtension)
+
+                try data.write(to: tempURL, options: .atomic)
+
+                let typeDescription = contentType?.preferredMIMEType ?? contentType?.identifier ?? "public.image"
+
+                let attachment = ChatAttachment(
+                    name: fileName,
+                    size: data.count,
+                    type: typeDescription,
+                    url: tempURL,
+                    kind: .file
+                )
+
+                await MainActor.run {
+                    attachments.append(attachment)
+                }
+            } else {
+                await MainActor.run {
+                    attachmentError = "Das Foto konnte nicht geladen werden."
+                }
             }
         } catch {
             await MainActor.run {
