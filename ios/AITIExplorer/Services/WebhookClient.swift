@@ -62,7 +62,8 @@ final class WebhookClient {
             url: agent.webhookURL,
             payload: payload,
             defaultSuccessMessage: "Webhook hat keine Nachricht zurückgesendet.",
-            binaryAttachments: payload.binaryAttachments
+            binaryAttachments: payload.binaryAttachments,
+            directMessageText: message.content
         )
     }
 
@@ -81,7 +82,8 @@ private extension WebhookClient {
         url: URL?,
         payload: Payload,
         defaultSuccessMessage: String,
-        binaryAttachments: [WebhookBinaryAttachment] = []
+        binaryAttachments: [WebhookBinaryAttachment] = [],
+        directMessageText: String? = nil
     ) async throws -> WebhookReply {
         guard let url else {
             throw WebhookError.missingURL
@@ -115,6 +117,14 @@ private extension WebhookClient {
             multipartBody.append("Content-Type: application/json; charset=utf-8\r\n\r\n")
             multipartBody.append(jsonData)
             multipartBody.append("\r\n")
+
+            if let text = directMessageText, !text.isEmpty {
+                multipartBody.append("--\(boundary)\r\n")
+                multipartBody.append("Content-Disposition: form-data; name=\"message\"\r\n")
+                multipartBody.append("Content-Type: text/plain; charset=utf-8\r\n\r\n")
+                multipartBody.append(text)
+                multipartBody.append("\r\n")
+            }
 
             for attachment in binaryAttachments {
                 multipartBody.append("--\(boundary)\r\n")
@@ -191,7 +201,7 @@ private struct ChatWebhookPayload: Encodable {
     struct MessagePayload: Encodable {
         let id: UUID
         let author: String
-        let content: String
+        let content: String?
         let timestamp: Date
         let attachments: [ChatWebhookPayload.AttachmentPayload]
         let binaryAttachments: [WebhookBinaryAttachment]
@@ -254,7 +264,11 @@ private extension ChatWebhookPayload.MessagePayload {
     init(message: ChatMessage, collectBinary: Bool) async throws {
         self.id = message.id
         self.author = message.author.rawValue
-        self.content = message.content
+        if message.attachments.isEmpty {
+            self.content = message.content
+        } else {
+            self.content = nil
+        }
         self.timestamp = message.timestamp
 
         var builtAttachments: [ChatWebhookPayload.AttachmentPayload] = []
