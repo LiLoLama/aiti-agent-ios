@@ -381,7 +381,7 @@ final class AudioViewModel: NSObject, ObservableObject {
         let route = audioSession.currentRoute
 
         switch reason {
-        case .oldDeviceUnavailable, .noSuitableRoute:
+        case .oldDeviceUnavailable, .noSuitableRouteForCategory:
             if isRecording {
                 _ = stopRecording()
             }
