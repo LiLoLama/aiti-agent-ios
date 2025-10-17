@@ -78,7 +78,6 @@ struct ChatDetailView: View {
                 )
                 .padding(.horizontal, 16)
                 .padding(.top, 10)
-                .padding(.bottom, 12)
             }
             .background(.ultraThinMaterial)
         }
@@ -517,14 +516,6 @@ private struct MessageComposer: View {
             }
         }
         .padding(.vertical, 2)
-        .toolbar {
-            ToolbarItemGroup(placement: .keyboard) {
-                Spacer()
-                Button("Fertig") {
-                    isFocused.wrappedValue = false
-                }
-            }
-        }
     }
 
     private func removeAttachment(_ attachment: ChatAttachment) {
