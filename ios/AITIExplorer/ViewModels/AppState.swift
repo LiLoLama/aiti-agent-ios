@@ -62,4 +62,17 @@ final class AppState: ObservableObject {
         self.settings = settings
     }
 
+    func fetchAllUsers() async throws -> [UserProfile] {
+        try await authService.fetchAllProfiles()
+    }
+
+    func updateUserStatus(userId: UUID, isActive: Bool) async throws {
+        try await authService.updateUserStatus(userId: userId, isActive: isActive)
+
+        if var profile = currentUser, profile.id == userId {
+            profile.isActive = isActive
+            currentUser = profile
+        }
+    }
+
 }

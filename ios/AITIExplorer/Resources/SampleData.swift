@@ -115,6 +115,7 @@ enum SampleData {
 
     static var previewUser: UserProfile {
         var profile = baseUserProfile
+        profile.role = .admin
         profile.agents = [marketingAgent, productAgent, researchAgent]
         return profile
     }

@@ -13,6 +13,7 @@ struct ProfileScreen: View {
     @StateObject private var viewModel = ProfileViewModel()
     @FocusState private var focusedField: ProfileField?
     @State private var showAgentManager = false
+    @State private var showUserAdministration = false
     @State private var selectedPhotoItem: PhotosPickerItem?
 
     var body: some View {
@@ -22,6 +23,10 @@ struct ProfileScreen: View {
                     personalCard
 
                     statusCards
+
+                    if viewModel.canManageUsers {
+                        adminCard
+                    }
 
                     agentsCard
 
@@ -43,6 +48,12 @@ struct ProfileScreen: View {
         .sheet(isPresented: $showAgentManager) {
             NavigationStack {
                 AgentManagementScreen(viewModel: viewModel)
+            }
+            .explorerBackground()
+        }
+        .sheet(isPresented: $showUserAdministration) {
+            NavigationStack {
+                AdminUserManagementScreen()
             }
             .explorerBackground()
         }
@@ -170,6 +181,50 @@ struct ProfileScreen: View {
                 statusTile(title: "Agents", subtitle: "\(viewModel.agents.count)", description: nil, accent: ExplorerTheme.goldHighlightStart)
             }
         }
+    }
+
+    private var adminCard: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            Text("Administration")
+                .font(.explorer(.headline, weight: .semibold))
+                .foregroundStyle(ExplorerTheme.textPrimary)
+
+            Text("Behalte alle Nutzer im Blick, prüfe ihren Status und reaktiviere Accounts direkt aus der App.")
+                .font(.explorer(.footnote))
+                .foregroundStyle(ExplorerTheme.textSecondary)
+
+            Button {
+                showUserAdministration = true
+            } label: {
+                HStack(spacing: 12) {
+                    Image(systemName: "person.3.sequence")
+                        .font(.system(size: 24, weight: .semibold))
+                        .foregroundStyle(ExplorerTheme.success)
+                    Text("Nutzerübersicht öffnen")
+                        .font(.explorer(.callout, weight: .semibold))
+                        .foregroundStyle(ExplorerTheme.textPrimary)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .foregroundStyle(ExplorerTheme.textSecondary)
+                }
+                .padding(.horizontal, 20)
+                .padding(.vertical, 16)
+                .background(
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .fill(elevatedCardBackgroundColor)
+                )
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(26)
+        .background(
+            RoundedRectangle(cornerRadius: 32, style: .continuous)
+                .fill(cardBackgroundColor)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 32, style: .continuous)
+                        .stroke(cardBorderColor, lineWidth: 1.1)
+                )
+        )
     }
 
     private func statusTile(title: String, subtitle: String, description: String?, accent: Color) -> some View {

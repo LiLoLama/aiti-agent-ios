@@ -38,7 +38,7 @@ final class SupabaseAuthService: AuthServicing {
             )
             let userId = try resolveUserID(from: response)
 
-            let profile = UserProfile(id: userId, name: name, email: email)
+            let profile = UserProfile(id: userId, name: name, email: email, role: .user)
             try await upsertProfile(profile)
 
             return try await fetchProfile(for: userId, emailFallback: email)
@@ -74,6 +74,7 @@ private extension SupabaseAuthService {
         let bio: String?
         let isActive: Bool?
         let name: String?
+        let role: String?
 
         private enum CodingKeys: String, CodingKey {
             case id
@@ -84,6 +85,7 @@ private extension SupabaseAuthService {
             case bio
             case isActive = "is_active"
             case name
+            case role
         }
     }
 
@@ -96,6 +98,7 @@ private extension SupabaseAuthService {
         let agents: String?
         let isActive: Bool?
         let name: String?
+        let role: String?
 
         private enum CodingKeys: String, CodingKey {
             case id
@@ -106,6 +109,17 @@ private extension SupabaseAuthService {
             case agents
             case isActive = "is_active"
             case name
+            case role
+        }
+    }
+
+    struct StatusUpdateInput: Encodable {
+        let id: UUID
+        let isActive: Bool
+
+        private enum CodingKeys: String, CodingKey {
+            case id
+            case isActive = "is_active"
         }
     }
 
@@ -140,7 +154,7 @@ private extension SupabaseAuthService {
                 return map(row: row, emailFallback: emailFallback)
             }
 
-            let profile = UserProfile(id: userId, name: emailFallback, email: emailFallback)
+            let profile = UserProfile(id: userId, name: emailFallback, email: emailFallback, role: .user)
             try await upsertProfile(profile)
             return profile
         } catch {
@@ -166,7 +180,8 @@ private extension SupabaseAuthService {
             bio: profile.bio.isEmpty ? nil : profile.bio,
             agents: agentsString,
             isActive: profile.isActive,
-            name: profile.name
+            name: profile.name,
+            role: profile.role == .unknown ? nil : profile.role.rawValue
         )
 
         _ = try await client.database
@@ -185,6 +200,7 @@ private extension SupabaseAuthService {
         let email = row.email ?? emailFallback
         let bio = row.bio ?? ""
         let isActive = row.isActive ?? true
+        let role = UserRole(from: row.role)
 
         return UserProfile(
             id: row.id,
@@ -194,6 +210,7 @@ private extension SupabaseAuthService {
             avatarSystemName: "person.crop.circle.fill",
             avatarImageData: nil,
             isActive: isActive,
+            role: role,
             agents: agents
         )
     }
@@ -215,5 +232,37 @@ private extension SupabaseAuthService {
         }
 
         return .unknown(message: message)
+    }
+}
+
+extension SupabaseAuthService {
+    func fetchAllProfiles() async throws -> [UserProfile] {
+        do {
+            let rows: [ProfileRow] = try await client.database
+                .from("profiles")
+                .select()
+                .order(column: "name", ascending: true)
+                .execute()
+                .value
+
+            return rows.map { row in
+                let fallbackEmail = row.email ?? row.displayName ?? row.name ?? ""
+                return map(row: row, emailFallback: fallbackEmail)
+            }
+        } catch {
+            throw map(error)
+        }
+    }
+
+    func updateUserStatus(userId: UUID, isActive: Bool) async throws {
+        do {
+            let input = StatusUpdateInput(id: userId, isActive: isActive)
+            _ = try await client.database
+                .from("profiles")
+                .upsert(input, onConflict: "id", returning: .minimal)
+                .execute()
+        } catch {
+            throw map(error)
+        }
     }
 }
