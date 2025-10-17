@@ -910,12 +910,19 @@ private struct MiniWaveformView: View {
                 ? max(clampedLevel, 0.08)
                 : (isPlaying ? max(0.35 + clampedLevel * 0.35, 0.28) : 0.28)
 
-            let barIndices: [Int] = (0..<barCount).map { $0 }
+            struct WaveformBar: Identifiable {
+                let id: Int
+                let progress: CGFloat
+            }
+
+            let bars: [WaveformBar] = (0..<barCount).map { index in
+                let progress = CGFloat(index) / CGFloat(max(barCount - 1, 1))
+                return WaveformBar(id: index, progress: progress)
+            }
 
             HStack(alignment: .center, spacing: 3) {
-                ForEach(barIndices, id: \.self) { index in
-                    let progress = CGFloat(index) / CGFloat(max(barCount - 1, 1))
-                    let base = sin(progress * .pi)
+                ForEach(bars) { bar in
+                    let base = sin(bar.progress * .pi)
                     let heightMultiplier = max(base * amplitude, 0.12)
 
                     RoundedRectangle(cornerRadius: 2)
