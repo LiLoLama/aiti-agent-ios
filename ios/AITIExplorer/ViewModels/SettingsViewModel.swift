@@ -1,6 +1,6 @@
 import Foundation
 
-final class SettingsViewModel: ObservableObject {
+@MainActor final class SettingsViewModel: ObservableObject {
     @Published var settings: AgentSettingsModel
     @Published var saveStatus: SaveStatus = .idle
     enum SaveStatus {
