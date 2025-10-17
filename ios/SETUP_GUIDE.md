@@ -33,9 +33,7 @@ Diese Anleitung beschreibt, wie du das neue SwiftUI-Projekt in Xcode anlegst, di
 ## 4. App starten
 1. Wähle im Scheme-Menü den gewünschten Simulator (z. B. *iPhone 15 Pro*).
 2. Baue und starte die App mit `⌘R`.
-3. Melde dich mit dem Demo-Zugang an:
-   - **E-Mail:** `demo@aiti.ai`
-   - **Passwort:** `SwiftRocks!`
+3. Lege über den Tab **Registrieren** einen neuen Zugang an und melde dich anschließend an.
 4. Navigiere über die Tab-Leiste zwischen **Chat**, **Einstellungen** und **Profil**.
 
 ## 5. Eigene Erweiterungen

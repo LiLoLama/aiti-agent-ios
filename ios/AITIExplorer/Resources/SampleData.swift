@@ -105,7 +105,7 @@ enum SampleData {
     static var baseUserProfile: UserProfile {
         UserProfile(
             name: "Alex Example",
-            email: "demo@aiti.ai",
+            email: "alex@example.com",
             bio: "Leitet AI-gestützte Innovationsprojekte im Team.",
             avatarSystemName: "person.crop.circle.fill.badge.checkmark",
             isActive: true,
