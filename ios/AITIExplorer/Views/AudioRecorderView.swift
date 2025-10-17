@@ -1,5 +1,6 @@
 import SwiftUI
 
+@MainActor
 struct AudioRecorderView: View {
     private let onRecordingConfirmed: ((URL) -> Void)?
     private let autoStartRecording: Bool
@@ -9,12 +10,13 @@ struct AudioRecorderView: View {
     @State private var didAutoStart = false
     @State private var shouldDiscardRecording = true
 
+    @MainActor
     init(
-        viewModel: AudioViewModel = AudioViewModel(),
+        viewModel: AudioViewModel? = nil,
         autoStartRecording: Bool = false,
         onRecordingConfirmed: ((URL) -> Void)? = nil
     ) {
-        _viewModel = StateObject(wrappedValue: viewModel)
+        _viewModel = StateObject(wrappedValue: viewModel ?? AudioViewModel())
         self.autoStartRecording = autoStartRecording
         self.onRecordingConfirmed = onRecordingConfirmed
     }
