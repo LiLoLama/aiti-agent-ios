@@ -2,6 +2,7 @@ import Foundation
 import Combine
 import SwiftUI
 
+@MainActor
 final class AppState: ObservableObject {
     enum Tab: Hashable {
         case chat
@@ -13,14 +14,13 @@ final class AppState: ObservableObject {
     @Published var settings: AgentSettingsModel
     @Published var selectedTab: Tab = .chat
 
-    private(set) var registeredUsers: [UserCredentials]
-
+    private let authService: AuthServicing
     private var cancellables = Set<AnyCancellable>()
 
-    init(previewUser: UserProfile? = nil) {
+    init(previewUser: UserProfile? = nil, authService: AuthServicing = MockAuthService()) {
+        self.authService = authService
         let defaults = SampleData.defaultSettings
         self.settings = defaults
-        self.registeredUsers = [SampleData.demoCredentials]
         self.currentUser = previewUser
 
         $settings
@@ -31,44 +31,30 @@ final class AppState: ObservableObject {
             .store(in: &cancellables)
     }
 
-    func login(email: String, password: String) throws {
-        guard let credentials = registeredUsers.first(where: { $0.email.lowercased() == email.lowercased() }) else {
-            throw AuthError.accountNotFound
-        }
-
-        guard credentials.password == password else {
-            throw AuthError.invalidPassword
-        }
-
-        currentUser = credentials.profile
+    func login(email: String, password: String) async throws {
+        let profile = try await authService.login(email: email, password: password)
+        currentUser = profile
         selectedTab = .chat
     }
 
-    func register(name: String, email: String, password: String) throws {
-        guard !registeredUsers.contains(where: { $0.email.lowercased() == email.lowercased() }) else {
-            throw AuthError.emailAlreadyRegistered
-        }
-
-        var newProfile = SampleData.baseUserProfile
-        newProfile.id = UUID()
-        newProfile.name = name
-        newProfile.email = email
-
-        let credentials = UserCredentials(email: email, password: password, profile: newProfile)
-        registeredUsers.append(credentials)
-        currentUser = newProfile
+    func register(name: String, email: String, password: String) async throws {
+        let profile = try await authService.register(name: name, email: email, password: password)
+        currentUser = profile
         selectedTab = .profile
     }
 
     func logout() {
+        Task {
+            try? await authService.logout()
+        }
         currentUser = nil
         selectedTab = .chat
     }
 
     func updateCurrentUser(_ profile: UserProfile) {
         currentUser = profile
-        if let index = registeredUsers.firstIndex(where: { $0.email.lowercased() == profile.email.lowercased() }) {
-            registeredUsers[index].profile = profile
+        Task {
+            try? await authService.updateProfile(profile)
         }
     }
 
@@ -76,27 +62,4 @@ final class AppState: ObservableObject {
         self.settings = settings
     }
 
-    enum AuthError: LocalizedError {
-        case accountNotFound
-        case invalidPassword
-        case emailAlreadyRegistered
-
-        var errorDescription: String? {
-            switch self {
-            case .accountNotFound:
-                return "Für diese E-Mail existiert noch kein Account."
-            case .invalidPassword:
-                return "Das Passwort ist nicht korrekt."
-            case .emailAlreadyRegistered:
-                return "Diese E-Mail ist bereits registriert."
-            }
-        }
-    }
-}
-
-struct UserCredentials: Identifiable, Hashable {
-    var id = UUID()
-    let email: String
-    var password: String
-    var profile: UserProfile
 }

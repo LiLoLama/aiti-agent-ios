@@ -119,14 +119,6 @@ enum SampleData {
         return profile
     }
 
-    static var demoCredentials: UserCredentials {
-        UserCredentials(
-            email: "demo@aiti.ai",
-            password: "SwiftRocks!",
-            profile: baseUserProfile
-        )
-    }
-
     static var defaultSettings: AgentSettingsModel {
         if let stored = loadSettings() {
             return stored

@@ -1,6 +1,7 @@
 import Foundation
 import Combine
 
+@MainActor
 final class ChatViewModel: ObservableObject {
     @Published private(set) var agents: [AgentProfile] = []
     @Published var selectedAgentID: UUID?

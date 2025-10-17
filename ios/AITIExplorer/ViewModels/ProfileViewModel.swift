@@ -1,6 +1,7 @@
 import Foundation
 import Combine
 
+@MainActor
 final class ProfileViewModel: ObservableObject {
     @Published var profile: UserProfile
     @Published var draftName: String
