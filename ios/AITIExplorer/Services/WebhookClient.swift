@@ -193,7 +193,7 @@ private struct ChatWebhookPayload: Encodable {
         let author: String
         let content: String
         let timestamp: Date
-        let attachments: [AttachmentPayload]
+        let attachments: [ChatWebhookPayload.AttachmentPayload]
         let binaryAttachments: [WebhookBinaryAttachment]
 
         private enum CodingKeys: String, CodingKey {
@@ -257,7 +257,7 @@ private extension ChatWebhookPayload.MessagePayload {
         self.content = message.content
         self.timestamp = message.timestamp
 
-        var builtAttachments: [AttachmentPayload] = []
+        var builtAttachments: [ChatWebhookPayload.AttachmentPayload] = []
         var binaries: [WebhookBinaryAttachment] = []
         for (index, attachment) in message.attachments.enumerated() {
             let payload = try await ChatWebhookPayload.AttachmentPayload(
