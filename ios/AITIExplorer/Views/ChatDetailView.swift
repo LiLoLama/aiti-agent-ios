@@ -83,7 +83,6 @@ struct ChatDetailView: View {
             .background(.ultraThinMaterial)
         }
         .explorerBackground()
-        .ignoresSafeArea(.keyboard, edges: .bottom)
         .fileImporter(
             isPresented: $showingFileImporter,
             allowedContentTypes: [.item],
@@ -517,14 +516,6 @@ private struct MessageComposer: View {
             }
         }
         .padding(.vertical, 2)
-        .toolbar {
-            ToolbarItemGroup(placement: .keyboard) {
-                Spacer()
-                Button("Fertig") {
-                    isFocused.wrappedValue = false
-                }
-            }
-        }
     }
 
     private func removeAttachment(_ attachment: ChatAttachment) {
