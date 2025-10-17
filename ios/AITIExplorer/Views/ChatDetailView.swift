@@ -20,6 +20,7 @@ struct ChatDetailView: View {
     @State private var showingPhotoPicker = false
     @State private var selectedPhotoPickerItem: PhotosPickerItem?
     @State private var attachmentError: String?
+    @State private var showingAudioRecorder = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -76,7 +77,7 @@ struct ChatDetailView: View {
                         self.attachments.removeAll()
                     },
                     onRequestFileAttachment: { showingAttachmentSourceDialog = true },
-                    onRequestAudioAttachment: {},
+                    onRequestAudioAttachment: { showingAudioRecorder = true },
                     isFocused: $isComposerFocused
                 )
                 .padding(.horizontal, 16)
@@ -134,6 +135,16 @@ struct ChatDetailView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text(attachmentError ?? "")
+        }
+        .sheet(isPresented: $showingAudioRecorder) {
+            AudioRecorderView(autoStartRecording: true) { url in
+                showingAudioRecorder = false
+                Task {
+                    await appendRecordedAudio(from: url)
+                }
+            }
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
         }
     }
 }
@@ -237,6 +248,39 @@ private extension ChatDetailView {
                 await MainActor.run {
                     attachmentError = "Das Foto konnte nicht geladen werden."
                 }
+            }
+        } catch {
+            await MainActor.run {
+                attachmentError = error.localizedDescription
+            }
+        }
+    }
+
+    func appendRecordedAudio(from url: URL) async {
+        do {
+            let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
+            let fileSize = (attributes[.size] as? NSNumber)?.intValue ?? 0
+
+            let resourceValues = try url.resourceValues(forKeys: [.contentTypeKey])
+            let contentType = resourceValues.contentType ?? UTType(filenameExtension: url.pathExtension)
+            let typeDescription = contentType?.preferredMIMEType ?? contentType?.identifier ?? "public.audio"
+
+            let asset = AVURLAsset(url: url)
+            let durationTime = try await asset.load(.duration)
+            let secondsValue = Int(round(CMTimeGetSeconds(durationTime)))
+            let durationSeconds = secondsValue > 0 ? secondsValue : nil
+
+            let attachment = ChatAttachment(
+                name: url.lastPathComponent,
+                size: fileSize,
+                type: typeDescription,
+                url: url,
+                kind: .audio,
+                durationSeconds: durationSeconds
+            )
+
+            await MainActor.run {
+                attachments.append(attachment)
             }
         } catch {
             await MainActor.run {
