@@ -14,13 +14,14 @@ struct ChatDetailView: View {
 
     @Namespace private var bottomID
     @FocusState private var isComposerFocused: Bool
+    @StateObject private var audioRecorderViewModel = AudioViewModel()
     @State private var attachments: [ChatAttachment] = []
     @State private var showingFileImporter = false
     @State private var showingAttachmentSourceDialog = false
     @State private var showingPhotoPicker = false
     @State private var selectedPhotoPickerItem: PhotosPickerItem?
     @State private var attachmentError: String?
-    @State private var showingAudioRecorder = false
+    @State private var activeAudioAttachmentID: UUID?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -71,13 +72,19 @@ struct ChatDetailView: View {
                 MessageComposer(
                     text: $draftedMessage,
                     attachments: $attachments,
+                    audioViewModel: audioRecorderViewModel,
+                    activeAudioAttachmentID: activeAudioAttachmentID,
                     onSend: { text, attachments in
                         onSend(text, attachments)
                         draftedMessage = ""
                         self.attachments.removeAll()
+                        resetInlineAudioStateAfterSend()
                     },
                     onRequestFileAttachment: { showingAttachmentSourceDialog = true },
-                    onRequestAudioAttachment: { showingAudioRecorder = true },
+                    onAudioButtonTapped: handleAudioButtonTapped,
+                    onAudioPlaybackTapped: toggleAudioPlayback,
+                    onRemoveAttachment: removeAttachment(_:),
+                    onRemoveAudio: removeInlineAudioAttachment,
                     isFocused: $isComposerFocused
                 )
                 .padding(.horizontal, 16)
@@ -135,16 +142,6 @@ struct ChatDetailView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text(attachmentError ?? "")
-        }
-        .sheet(isPresented: $showingAudioRecorder) {
-            AudioRecorderView(autoStartRecording: true) { url in
-                showingAudioRecorder = false
-                Task {
-                    await appendRecordedAudio(from: url)
-                }
-            }
-            .presentationDetents([.medium, .large])
-            .presentationDragIndicator(.visible)
         }
     }
 }
@@ -256,7 +253,7 @@ private extension ChatDetailView {
         }
     }
 
-    func appendRecordedAudio(from url: URL) async {
+    func appendRecordedAudio(from url: URL) async -> ChatAttachment? {
         do {
             let attributes = try FileManager.default.attributesOfItem(atPath: url.path)
             let fileSize = (attributes[.size] as? NSNumber)?.intValue ?? 0
@@ -279,14 +276,117 @@ private extension ChatDetailView {
                 durationSeconds: durationSeconds
             )
 
-            await MainActor.run {
+            return await MainActor.run {
                 attachments.append(attachment)
+                return attachment
             }
         } catch {
             await MainActor.run {
                 attachmentError = error.localizedDescription
             }
+            return nil
         }
+    }
+
+    func handleAudioButtonTapped() {
+        if audioRecorderViewModel.isRecording {
+            guard let url = audioRecorderViewModel.stopRecording() else {
+                return
+            }
+
+            Task {
+                if let attachment = await appendRecordedAudio(from: url) {
+                    await MainActor.run {
+                        activeAudioAttachmentID = attachment.id
+                    }
+                } else {
+                    await MainActor.run {
+                        removeInlineAudioAttachment()
+                    }
+                }
+            }
+        } else {
+            startInlineRecording()
+        }
+    }
+
+    func startInlineRecording() {
+        if let activeID = activeAudioAttachmentID,
+           let attachment = attachments.first(where: { $0.id == activeID }) {
+            removeAttachment(attachment)
+        }
+
+        audioRecorderViewModel.stopPlayback()
+        audioRecorderViewModel.errorMessage = nil
+        audioRecorderViewModel.shouldShowSettingsLink = false
+        if activeAudioAttachmentID == nil, let existingURL = audioRecorderViewModel.recordedURL {
+            try? FileManager.default.removeItem(at: existingURL)
+        }
+        audioRecorderViewModel.recordedURL = nil
+        audioRecorderViewModel.recordingDuration = 0
+        audioRecorderViewModel.waveformLevel = 0
+        activeAudioAttachmentID = nil
+        audioRecorderViewModel.startRecording()
+    }
+
+    func toggleAudioPlayback() {
+        if audioRecorderViewModel.isPlaying {
+            audioRecorderViewModel.pause()
+        } else {
+            audioRecorderViewModel.play(url: audioRecorderViewModel.recordedURL)
+        }
+    }
+
+    func removeAttachment(_ attachment: ChatAttachment) {
+        attachments.removeAll { $0.id == attachment.id }
+
+        guard attachment.id == activeAudioAttachmentID else { return }
+
+        audioRecorderViewModel.stopPlayback()
+        if let url = attachment.url {
+            try? FileManager.default.removeItem(at: url)
+        }
+        audioRecorderViewModel.recordedURL = nil
+        audioRecorderViewModel.recordingDuration = 0
+        audioRecorderViewModel.waveformLevel = 0
+        audioRecorderViewModel.errorMessage = nil
+        audioRecorderViewModel.shouldShowSettingsLink = false
+        activeAudioAttachmentID = nil
+    }
+
+    func removeInlineAudioAttachment() {
+        guard let activeID = activeAudioAttachmentID else {
+            audioRecorderViewModel.stopPlayback()
+            audioRecorderViewModel.recordedURL = nil
+            audioRecorderViewModel.recordingDuration = 0
+            audioRecorderViewModel.waveformLevel = 0
+            return
+        }
+
+        if let attachment = attachments.first(where: { $0.id == activeID }) {
+            removeAttachment(attachment)
+        } else {
+            audioRecorderViewModel.stopPlayback()
+            if let url = audioRecorderViewModel.recordedURL {
+                try? FileManager.default.removeItem(at: url)
+            }
+            audioRecorderViewModel.recordedURL = nil
+            audioRecorderViewModel.recordingDuration = 0
+            audioRecorderViewModel.waveformLevel = 0
+            audioRecorderViewModel.errorMessage = nil
+            audioRecorderViewModel.shouldShowSettingsLink = false
+            activeAudioAttachmentID = nil
+        }
+    }
+
+    func resetInlineAudioStateAfterSend() {
+        activeAudioAttachmentID = nil
+        audioRecorderViewModel.stopPlayback()
+        audioRecorderViewModel.recordedURL = nil
+        audioRecorderViewModel.recordingDuration = 0
+        audioRecorderViewModel.waveformLevel = 0
+        audioRecorderViewModel.errorMessage = nil
+        audioRecorderViewModel.shouldShowSettingsLink = false
     }
 }
 
@@ -550,23 +650,57 @@ private struct TypingIndicatorView: View {
 private struct MessageComposer: View {
     @Binding var text: String
     @Binding var attachments: [ChatAttachment]
+    @ObservedObject var audioViewModel: AudioViewModel
+    var activeAudioAttachmentID: UUID?
     var onSend: (String, [ChatAttachment]) -> Void
     var onRequestFileAttachment: () -> Void
-    var onRequestAudioAttachment: () -> Void
+    var onAudioButtonTapped: () -> Void
+    var onAudioPlaybackTapped: () -> Void
+    var onRemoveAttachment: (ChatAttachment) -> Void
+    var onRemoveAudio: () -> Void
     var isFocused: FocusState<Bool>.Binding
 
     private var trimmedText: String {
         text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    private var inlineAudioVisible: Bool {
+        audioViewModel.isRecording || audioViewModel.recordedURL != nil
+    }
+
+    private var displayedAttachments: [ChatAttachment] {
+        attachments.filter { $0.id != activeAudioAttachmentID }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            if !attachments.isEmpty {
+            if inlineAudioVisible {
+                InlineAudioRecorderBar(
+                    isRecording: audioViewModel.isRecording,
+                    durationText: audioViewModel.formattedRecordingDuration,
+                    waveformLevel: CGFloat(audioViewModel.waveformLevel),
+                    isPlaying: audioViewModel.isPlaying,
+                    playbackProgress: audioViewModel.playbackProgress,
+                    onPlayPause: onAudioPlaybackTapped,
+                    onRemove: audioViewModel.isRecording ? nil : onRemoveAudio
+                )
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+
+            if let errorMessage = audioViewModel.errorMessage {
+                InlineAudioErrorView(
+                    message: errorMessage,
+                    showSettings: audioViewModel.shouldShowSettingsLink,
+                    openSettings: audioViewModel.openSettings
+                )
+            }
+
+            if !displayedAttachments.isEmpty {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 12) {
-                        ForEach(attachments) { attachment in
+                        ForEach(displayedAttachments) { attachment in
                             AttachmentComposerChip(attachment: attachment) {
-                                removeAttachment(attachment)
+                                onRemoveAttachment(attachment)
                             }
                         }
                     }
@@ -598,10 +732,22 @@ private struct MessageComposer: View {
                     .foregroundStyle(ExplorerTheme.textPrimary)
                     .focused(isFocused)
 
-                Button(action: onRequestAudioAttachment) {
-                    circularAccessory(systemName: "mic.fill")
+                Button(action: onAudioButtonTapped) {
+                    Image(systemName: audioViewModel.isRecording ? "stop.fill" : "mic.fill")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundStyle(audioViewModel.isRecording ? AnyShapeStyle(Color.white) : AnyShapeStyle(ExplorerTheme.goldGradient))
+                        .frame(width: 44, height: 44)
+                        .background(
+                            Circle()
+                                .fill(audioViewModel.isRecording ? Color.red.opacity(0.85) : ExplorerTheme.surfaceElevated.opacity(0.9))
+                        )
+                        .overlay(
+                            Circle()
+                                .stroke(audioViewModel.isRecording ? Color.red.opacity(0.7) : ExplorerTheme.goldHighlightStart.opacity(0.35), lineWidth: 1)
+                        )
+                        .animation(.easeInOut(duration: 0.2), value: audioViewModel.isRecording)
                 }
-                .accessibilityLabel("Audio aufnehmen")
+                .accessibilityLabel(audioViewModel.isRecording ? "Aufnahme stoppen" : "Audio aufnehmen")
 
                 Button {
                     let message = trimmedText
@@ -627,10 +773,6 @@ private struct MessageComposer: View {
         .padding(.vertical, 2)
     }
 
-    private func removeAttachment(_ attachment: ChatAttachment) {
-        attachments.removeAll { $0.id == attachment.id }
-    }
-
     private func circularAccessory(systemName: String) -> some View {
         Image(systemName: systemName)
             .font(.system(size: 18, weight: .semibold))
@@ -644,6 +786,145 @@ private struct MessageComposer: View {
                 Circle()
                     .stroke(ExplorerTheme.goldHighlightStart.opacity(0.35), lineWidth: 1)
             )
+    }
+}
+
+private struct InlineAudioRecorderBar: View {
+    var isRecording: Bool
+    var durationText: String
+    var waveformLevel: CGFloat
+    var isPlaying: Bool
+    var playbackProgress: Double
+    var onPlayPause: () -> Void
+    var onRemove: (() -> Void)?
+
+    var body: some View {
+        HStack(spacing: 12) {
+            if isRecording {
+                Image(systemName: "record.circle.fill")
+                    .foregroundStyle(Color.white)
+                    .frame(width: 28, height: 28)
+                    .background(Circle().fill(Color.red.opacity(0.85)))
+                    .overlay(
+                        Circle()
+                            .stroke(Color.red.opacity(0.6), lineWidth: 1)
+                    )
+
+                MiniWaveformView(
+                    level: waveformLevel,
+                    isRecording: true,
+                    isPlaying: false
+                )
+                .frame(height: 28)
+                .animation(.easeOut(duration: 0.12), value: waveformLevel)
+
+                Text(durationText)
+                    .font(.system(size: 15, weight: .medium, design: .monospaced))
+                    .foregroundStyle(ExplorerTheme.textPrimary)
+            } else {
+                Button(action: onPlayPause) {
+                    Image(systemName: isPlaying ? "pause.fill" : "play.fill")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(Color.black)
+                        .frame(width: 28, height: 28)
+                        .background(
+                            Circle()
+                                .fill(ExplorerTheme.goldGradient)
+                        )
+                }
+                .buttonStyle(.plain)
+
+                MiniWaveformView(
+                    level: CGFloat(playbackProgress),
+                    isRecording: false,
+                    isPlaying: isPlaying
+                )
+                .frame(height: 28)
+                .animation(.easeOut(duration: 0.25), value: playbackProgress)
+                .animation(.easeOut(duration: 0.25), value: isPlaying)
+
+                Text(durationText)
+                    .font(.system(size: 15, weight: .medium, design: .monospaced))
+                    .foregroundStyle(ExplorerTheme.textPrimary)
+
+                if let onRemove {
+                    Button(action: onRemove) {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.system(size: 16, weight: .semibold))
+                            .foregroundStyle(ExplorerTheme.textSecondary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Aufnahme entfernen")
+                }
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(ExplorerTheme.surface.opacity(0.92))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(ExplorerTheme.goldHighlightStart.opacity(0.25), lineWidth: 1)
+        )
+    }
+}
+
+private struct InlineAudioErrorView: View {
+    let message: String
+    let showSettings: Bool
+    let openSettings: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(message)
+                .font(.explorer(.caption))
+                .foregroundStyle(ExplorerTheme.danger)
+                .multilineTextAlignment(.leading)
+
+            if showSettings {
+                Button("Einstellungen öffnen", action: openSettings)
+                    .font(.explorer(.caption, weight: .semibold))
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(ExplorerTheme.danger.opacity(0.12))
+        )
+    }
+}
+
+private struct MiniWaveformView: View {
+    var level: CGFloat
+    var isRecording: Bool
+    var isPlaying: Bool
+
+    var body: some View {
+        GeometryReader { proxy in
+            let clampedLevel = min(max(level, 0), 1)
+            let barCount = max(Int(proxy.size.width / 5), 8)
+            let amplitude = isRecording
+                ? max(clampedLevel, 0.08)
+                : (isPlaying ? max(0.35 + clampedLevel * 0.35, 0.28) : 0.28)
+
+            HStack(alignment: .center, spacing: 3) {
+                ForEach(0..<barCount, id: \.self) { index in
+                    let progress = CGFloat(index) / CGFloat(max(barCount - 1, 1))
+                    let base = sin(progress * .pi)
+                    let heightMultiplier = max(base * amplitude, 0.12)
+
+                    RoundedRectangle(cornerRadius: 2)
+                        .fill(isRecording ? Color.red.opacity(0.85) : ExplorerTheme.goldGradient)
+                        .frame(height: max(proxy.size.height * heightMultiplier, 4))
+                        .opacity(isRecording ? 0.95 : (isPlaying ? 0.9 : 0.75))
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .clipped()
     }
 }
 
