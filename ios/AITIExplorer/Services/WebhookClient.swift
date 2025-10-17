@@ -62,8 +62,7 @@ final class WebhookClient {
             url: agent.webhookURL,
             payload: payload,
             defaultSuccessMessage: "Webhook hat keine Nachricht zurückgesendet.",
-            binaryAttachments: payload.binaryAttachments,
-            directMessageText: message.content
+            binaryAttachments: payload.binaryAttachments
         )
     }
 
@@ -82,8 +81,7 @@ private extension WebhookClient {
         url: URL?,
         payload: Payload,
         defaultSuccessMessage: String,
-        binaryAttachments: [WebhookBinaryAttachment] = [],
-        directMessageText: String? = nil
+        binaryAttachments: [WebhookBinaryAttachment] = []
     ) async throws -> WebhookReply {
         guard let url else {
             throw WebhookError.missingURL
@@ -117,14 +115,6 @@ private extension WebhookClient {
             multipartBody.append("Content-Type: application/json; charset=utf-8\r\n\r\n")
             multipartBody.append(jsonData)
             multipartBody.append("\r\n")
-
-            if let text = directMessageText, !text.isEmpty {
-                multipartBody.append("--\(boundary)\r\n")
-                multipartBody.append("Content-Disposition: form-data; name=\"message\"\r\n")
-                multipartBody.append("Content-Type: text/plain; charset=utf-8\r\n\r\n")
-                multipartBody.append(text)
-                multipartBody.append("\r\n")
-            }
 
             for attachment in binaryAttachments {
                 multipartBody.append("--\(boundary)\r\n")
@@ -264,11 +254,7 @@ private extension ChatWebhookPayload.MessagePayload {
     init(message: ChatMessage, collectBinary: Bool) async throws {
         self.id = message.id
         self.author = message.author.rawValue
-        if message.attachments.isEmpty {
-            self.content = message.content
-        } else {
-            self.content = nil
-        }
+        self.content = message.content
         self.timestamp = message.timestamp
 
         var builtAttachments: [ChatWebhookPayload.AttachmentPayload] = []
