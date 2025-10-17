@@ -218,10 +218,10 @@ struct AuthView: View {
 
     private var footer: some View {
         VStack(spacing: 6) {
-            Text("Demo-Zugang")
+            Text("Noch keinen Zugang?")
                 .font(.explorer(.footnote, weight: .semibold))
                 .foregroundStyle(ExplorerTheme.textSecondary)
-            Text("E-Mail: demo@aiti.ai • Passwort: SwiftRocks!")
+            Text("Nutze den Registrieren-Tab, um deinen persönlichen Account anzulegen.")
                 .font(.explorer(.footnote))
                 .foregroundStyle(ExplorerTheme.textMuted)
         }

@@ -7,9 +7,7 @@ final class MockAuthService: AuthServicing {
         if let registeredUsers {
             self.registeredUsers = registeredUsers
         } else {
-            let baseProfile = SampleData.baseUserProfile
-            let credentials = MockCredentials(email: baseProfile.email, password: "SwiftRocks!", profile: baseProfile)
-            self.registeredUsers = [credentials]
+            self.registeredUsers = []
         }
     }
 
