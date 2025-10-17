@@ -898,6 +898,11 @@ private struct InlineAudioErrorView: View {
 }
 
 private struct MiniWaveformView: View {
+    private struct WaveformBar: Identifiable {
+        let id: Int
+        let progress: CGFloat
+    }
+
     var level: CGFloat
     var isRecording: Bool
     var isPlaying: Bool
@@ -909,11 +914,6 @@ private struct MiniWaveformView: View {
             let amplitude = isRecording
                 ? max(clampedLevel, 0.08)
                 : (isPlaying ? max(0.35 + clampedLevel * 0.35, 0.28) : 0.28)
-
-            struct WaveformBar: Identifiable {
-                let id: Int
-                let progress: CGFloat
-            }
 
             let bars: [WaveformBar] = (0..<barCount).map { index in
                 let progress = CGFloat(index) / CGFloat(max(barCount - 1, 1))
