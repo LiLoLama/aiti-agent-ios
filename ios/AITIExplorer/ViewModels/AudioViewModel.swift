@@ -407,7 +407,16 @@ final class AudioViewModel: NSObject, ObservableObject {
 
     private func currentRecordPermission() -> AVAudioSession.RecordPermission {
         if #available(iOS 17, *) {
-            return AVAudioApplication.shared.recordPermission
+            switch AVAudioApplication.shared.recordPermission {
+            case .undetermined:
+                return .undetermined
+            case .denied:
+                return .denied
+            case .granted:
+                return .granted
+            @unknown default:
+                return .undetermined
+            }
         } else {
             return audioSession.recordPermission
         }
@@ -415,7 +424,7 @@ final class AudioViewModel: NSObject, ObservableObject {
 
     private func requestRecordPermission(_ handler: @escaping (Bool) -> Void) {
         if #available(iOS 17, *) {
-            AVAudioApplication.shared.requestRecordPermission { allowed in
+            AVAudioApplication.requestRecordPermission { allowed in
                 handler(allowed)
             }
         } else {
@@ -443,7 +452,7 @@ final class AudioViewModel: NSObject, ObservableObject {
     }
 }
 
-@preconcurrency extension AudioViewModel: AVAudioRecorderDelegate {
+extension AudioViewModel: AVAudioRecorderDelegate {
     nonisolated func audioRecorderEncodeErrorDidOccur(_ recorder: AVAudioRecorder, error: Error?) {
         Task { @MainActor [weak self] in
             guard let self else { return }
@@ -475,7 +484,7 @@ final class AudioViewModel: NSObject, ObservableObject {
     }
 }
 
-@preconcurrency extension AudioViewModel: AVAudioPlayerDelegate {
+extension AudioViewModel: AVAudioPlayerDelegate {
     nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
         Task { @MainActor [weak self] in
             guard let self else { return }
