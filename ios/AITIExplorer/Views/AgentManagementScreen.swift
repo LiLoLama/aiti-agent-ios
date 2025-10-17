@@ -220,9 +220,10 @@ struct AgentManagementScreen: View {
                 viewModel.saveAgentChanges(showToast: true)
             } label: {
                 Text("Änderungen sichern")
+                    .font(.explorer(.callout, weight: .semibold))
             }
-            .buttonStyle(ExplorerPrimaryButtonStyle())
-            .frame(width: 220)
+            .buttonStyle(.plain)
+            .foregroundStyle(ExplorerTheme.goldHighlightStart)
         }
     }
 }

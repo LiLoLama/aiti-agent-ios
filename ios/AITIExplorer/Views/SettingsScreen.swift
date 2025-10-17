@@ -8,13 +8,11 @@ struct SettingsScreen: View {
         NavigationStack {
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 28) {
-                    hero
-
                     appearanceCard
 
                     accentCard
 
-                    infoCard
+                    resetButton
                 }
                 .padding(.horizontal, 24)
                 .padding(.bottom, 48)
@@ -26,40 +24,6 @@ struct SettingsScreen: View {
         .explorerBackground()
         .onAppear {
             viewModel.attach(appState: appState)
-        }
-    }
-
-    private var hero: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Arbeite im perfekten Licht")
-                .font(.explorer(.title2, weight: .semibold))
-                .foregroundStyle(ExplorerTheme.textPrimary)
-
-            Text("Steuere Erscheinungsbild und Akzentfarben deines Workspaces. Änderungen greifen sofort und werden pro Benutzerprofil gespeichert.")
-                .font(.explorer(.callout))
-                .foregroundStyle(ExplorerTheme.textSecondary)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .fill(
-                    ExplorerTheme.goldGradient
-                        .opacity(0.16)
-                        .blendMode(.screen)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 26, style: .continuous)
-                        .stroke(ExplorerTheme.goldHighlightStart.opacity(0.4), lineWidth: 1.2)
-                )
-        )
-        .overlay(alignment: .topTrailing) {
-            Circle()
-                .fill(ExplorerTheme.goldGradient)
-                .frame(width: 80, height: 80)
-                .blur(radius: 12)
-                .offset(x: 30, y: -40)
         }
     }
 
@@ -108,40 +72,8 @@ struct SettingsScreen: View {
         .explorerCard()
     }
 
-    private var infoCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Label("Alle Änderungen werden automatisch für dein Profil gesichert.", systemImage: "sparkles")
-                .font(.explorer(.callout, weight: .medium))
-                .foregroundStyle(ExplorerTheme.textPrimary)
-
-            if viewModel.saveStatus == .success {
-                Label("Gespeichert!", systemImage: "checkmark.seal.fill")
-                    .font(.explorer(.footnote, weight: .medium))
-                    .foregroundStyle(ExplorerTheme.success)
-            } else if viewModel.saveStatus == .inProgress {
-                Label("Speichern …", systemImage: "clock")
-                    .font(.explorer(.footnote, weight: .medium))
-                    .foregroundStyle(ExplorerTheme.textSecondary)
-            }
-        }
-        .padding(20)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(ExplorerTheme.secondaryCardBackground(for: appState.settings.colorScheme.preferredScheme ?? .dark))
-        )
-    }
-
     private var toolbarItems: some ToolbarContent {
-        ToolbarItemGroup(placement: .navigationBarTrailing) {
-            Button {
-                viewModel.reset()
-            } label: {
-                Text("Zurücksetzen")
-                    .font(.explorer(.callout, weight: .medium))
-                    .foregroundStyle(ExplorerTheme.textSecondary)
-            }
-
+        ToolbarItem(placement: .navigationBarTrailing) {
             Button {
                 viewModel.save()
             } label: {
@@ -151,12 +83,26 @@ struct SettingsScreen: View {
                             .progressViewStyle(.circular)
                     }
                     Text("Speichern")
+                        .font(.explorer(.callout, weight: .semibold))
                 }
             }
-            .buttonStyle(ExplorerPrimaryButtonStyle())
-            .frame(width: 150)
+            .buttonStyle(.plain)
+            .foregroundStyle(ExplorerTheme.goldHighlightStart)
             .disabled(viewModel.saveStatus == .inProgress)
         }
+    }
+
+    private var resetButton: some View {
+        Button(role: .destructive) {
+            viewModel.reset()
+        } label: {
+            Text("Zurücksetzen")
+                .font(.explorer(.callout, weight: .medium))
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(ExplorerTheme.danger)
+        .padding(.top, 8)
     }
 
     private func segmentedOptions<Selection: Hashable, Content: View>(
