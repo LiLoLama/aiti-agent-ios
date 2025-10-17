@@ -7,6 +7,7 @@ final class ProfileViewModel: ObservableObject {
     @Published var draftBio: String
     @Published var agents: [AgentProfile]
     @Published var toastMessage: String?
+    @Published var avatarImageData: Data?
 
     private var appState: AppState?
 
@@ -17,6 +18,7 @@ final class ProfileViewModel: ObservableObject {
         self.draftName = profile.name
         self.draftBio = profile.bio
         self.agents = profile.agents
+        self.avatarImageData = profile.avatarImageData
 
         configureBindings()
     }
@@ -29,6 +31,7 @@ final class ProfileViewModel: ObservableObject {
             self.draftName = profile.name
             self.draftBio = profile.bio
             self.agents = profile.agents
+            self.avatarImageData = profile.avatarImageData
         }
     }
 
@@ -38,6 +41,7 @@ final class ProfileViewModel: ObservableObject {
         profile.name = draftName
         profile.bio = draftBio
         profile.agents = agents
+        profile.avatarImageData = avatarImageData
         persistProfileChanges()
         toastMessage = "Profil gespeichert"
     }
@@ -95,6 +99,7 @@ private extension ProfileViewModel {
                 self?.draftName = profile.name
                 self?.draftBio = profile.bio
                 self?.agents = profile.agents
+                self?.avatarImageData = profile.avatarImageData
             }
             .store(in: &cancellables)
     }
@@ -105,18 +110,8 @@ extension ProfileViewModel {
         profile.isActive ? "Aktiv" : "Inaktiv"
     }
 
-    var statusDescription: String {
-        profile.isActive ? "Dein Account ist aktiv und einsatzbereit." : "Dein Account ist aktuell inaktiv."
-    }
-
-    var agentCountText: String {
-        let count = agents.count
-        if count == 0 {
-            return "Noch keine Agenten erstellt"
-        }
-        if count == 1 {
-            return "1 Agent erstellt"
-        }
-        return "\(count) Agenten erstellt"
+    func updateAvatar(with data: Data?) {
+        avatarImageData = data
+        profile.avatarImageData = data
     }
 }

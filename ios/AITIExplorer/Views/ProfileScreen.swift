@@ -1,4 +1,6 @@
 import SwiftUI
+import PhotosUI
+import UIKit
 
 private enum ProfileField: Hashable {
     case name
@@ -10,6 +12,7 @@ struct ProfileScreen: View {
     @StateObject private var viewModel = ProfileViewModel()
     @FocusState private var focusedField: ProfileField?
     @State private var showAgentManager = false
+    @State private var selectedPhotoItem: PhotosPickerItem?
 
     var body: some View {
         NavigationStack {
@@ -45,35 +48,50 @@ struct ProfileScreen: View {
         .onAppear {
             viewModel.attach(appState: appState)
         }
+        .onChange(of: selectedPhotoItem) { _, newValue in
+            guard let item = newValue else { return }
+            Task {
+                if let data = try? await item.loadTransferable(type: Data.self) {
+                    await MainActor.run {
+                        viewModel.updateAvatar(with: data)
+                    }
+                }
+                await MainActor.run {
+                    selectedPhotoItem = nil
+                }
+            }
+        }
     }
 
     private var personalCard: some View {
         VStack(alignment: .leading, spacing: 20) {
             HStack(alignment: .top, spacing: 16) {
-                ZStack(alignment: .bottomTrailing) {
-                    Circle()
-                        .fill(ExplorerTheme.surface.opacity(0.85))
-                        .frame(width: 86, height: 86)
-                        .overlay(
-                            Circle()
-                                .stroke(ExplorerTheme.goldHighlightStart.opacity(0.35), lineWidth: 1.2)
-                        )
-                    Text(profileInitials)
-                        .font(.explorer(.title, weight: .bold))
-                        .foregroundStyle(ExplorerTheme.textPrimary)
+                PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
+                    ZStack(alignment: .bottomTrailing) {
+                        Circle()
+                            .fill(ExplorerTheme.surface.opacity(0.85))
+                            .frame(width: 86, height: 86)
+                            .overlay(
+                                Circle()
+                                    .stroke(ExplorerTheme.goldHighlightStart.opacity(0.35), lineWidth: 1.2)
+                            )
 
-                    Button(action: {}) {
-                        Label("Avatar wechseln", systemImage: "photo")
-                            .labelStyle(.iconOnly)
-                            .padding(8)
-                            .background(ExplorerTheme.goldGradient)
-                            .clipShape(Circle())
+                        avatarContent
+
+                        Circle()
+                            .fill(ExplorerTheme.goldGradient)
+                            .frame(width: 34, height: 34)
+                            .overlay(
+                                Image(systemName: "photo")
+                                    .font(.system(size: 16, weight: .semibold))
+                                    .foregroundStyle(Color.white)
+                            )
                             .shadow(color: ExplorerTheme.goldHighlightEnd.opacity(0.35), radius: 10, x: 0, y: 6)
+                            .offset(x: 6, y: 6)
                     }
-                    .offset(x: 6, y: 6)
-                    .buttonStyle(.plain)
-                    .opacity(0.9)
                 }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Profilbild auswählen")
 
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Dein persönlicher Bereich")
@@ -142,13 +160,13 @@ struct ProfileScreen: View {
             HStack(spacing: 18) {
                 statusTile(title: "Status", subtitle: viewModel.statusLabel, description: nil, accent: ExplorerTheme.success)
 
-                statusTile(title: "Agents", subtitle: "\(viewModel.agents.count)", description: viewModel.agentCountText, accent: ExplorerTheme.goldHighlightStart)
+                statusTile(title: "Agents", subtitle: "\(viewModel.agents.count)", description: nil, accent: ExplorerTheme.goldHighlightStart)
             }
 
             VStack(spacing: 18) {
                 statusTile(title: "Status", subtitle: viewModel.statusLabel, description: nil, accent: ExplorerTheme.success)
 
-                statusTile(title: "Agents", subtitle: "\(viewModel.agents.count)", description: viewModel.agentCountText, accent: ExplorerTheme.goldHighlightStart)
+                statusTile(title: "Agents", subtitle: "\(viewModel.agents.count)", description: nil, accent: ExplorerTheme.goldHighlightStart)
             }
         }
     }
@@ -258,18 +276,23 @@ struct ProfileScreen: View {
 }
 
 private extension ProfileScreen {
-    var profileInitials: String {
-        let trimmed = viewModel.profile.name.trimmingCharacters(in: .whitespacesAndNewlines)
-        let components = trimmed.split(separator: " ")
-        let firstLetters = components.prefix(2).compactMap { $0.first }
-        let initials = firstLetters.map { String($0) }.joined()
-        if !initials.isEmpty {
-            return initials.uppercased()
+    var avatarContent: some View {
+        Group {
+            if let data = viewModel.avatarImageData,
+               let uiImage = UIImage(data: data) {
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                Image(systemName: viewModel.profile.avatarSystemName)
+                    .resizable()
+                    .scaledToFit()
+                    .padding(18)
+                    .foregroundStyle(ExplorerTheme.goldGradient)
+            }
         }
-        if let first = trimmed.first {
-            return String(first).uppercased()
-        }
-        return "AI"
+        .frame(width: 86, height: 86)
+        .clipShape(Circle())
     }
 }
 
