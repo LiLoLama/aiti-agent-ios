@@ -51,14 +51,37 @@ final class ChatViewModel: ObservableObject {
         update(agent)
 
         pendingResponse = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
-            guard let self else { return }
-            let reply = ChatMessage(
+
+        guard agent.webhookURL != nil else {
+            let infoMessage = ChatMessage(
                 author: .agent,
-                content: "Danke für deine Nachricht! Ich kümmere mich darum und melde mich mit einem Vorschlag."
+                content: "Für diesen Agenten ist kein Webhook hinterlegt. Bitte füge eine gültige URL hinzu, um Antworten zu erhalten."
             )
-            self.append(message: reply, to: agent)
-            self.pendingResponse = false
+            append(message: infoMessage, to: agent)
+            pendingResponse = false
+            return
+        }
+
+        let targetAgent = agent
+        Task { [weak self] in
+            guard let self else { return }
+            do {
+                let reply = try await WebhookClient.shared.sendChatMessage(agent: targetAgent, message: userMessage)
+                await MainActor.run {
+                    let responseMessage = ChatMessage(author: .agent, content: reply.text)
+                    self.append(message: responseMessage, to: targetAgent)
+                    self.pendingResponse = false
+                }
+            } catch {
+                await MainActor.run {
+                    let errorMessage = ChatMessage(
+                        author: .agent,
+                        content: "Der Webhook konnte nicht aufgerufen werden: \(error.localizedDescription)"
+                    )
+                    self.append(message: errorMessage, to: targetAgent)
+                    self.pendingResponse = false
+                }
+            }
         }
     }
 
