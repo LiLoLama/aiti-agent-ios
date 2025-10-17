@@ -233,15 +233,11 @@ private struct ChatWebhookPayload: Encodable {
     let sentAt: Date
     let binaryAttachments: [WebhookBinaryAttachment]
 
-    init(agent: AgentProfile, message: ChatMessage, conversation: [ChatMessage]) async throws {
+    init(agent: AgentProfile, message: ChatMessage, conversation _: [ChatMessage]) async throws {
         self.agent = AgentPayload(id: agent.id, name: agent.name, role: agent.role, description: agent.description)
         let currentMessage = try await MessagePayload(message: message, collectBinary: true)
         self.message = currentMessage
-        if let latestMessage = conversation.last {
-            self.conversation = [try await MessagePayload(message: latestMessage, collectBinary: false)]
-        } else {
-            self.conversation = [try await MessagePayload(message: message, collectBinary: false)]
-        }
+        self.conversation = [try await MessagePayload(message: message, collectBinary: false)]
         self.sentAt = Date()
         self.binaryAttachments = currentMessage.binaryAttachments
     }
