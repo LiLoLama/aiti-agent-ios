@@ -1,4 +1,6 @@
 import SwiftUI
+import PhotosUI
+import UIKit
 
 private enum AgentField: Hashable {
     case newName
@@ -241,9 +243,39 @@ private struct AgentEditorCard: View {
     var onTestWebhook: () -> Void
     var onRemove: () -> Void
 
+    @State private var selectedPhotoItem: PhotosPickerItem?
+
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             HStack(alignment: .center, spacing: 16) {
+                PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
+                    ZStack(alignment: .bottomTrailing) {
+                        avatarPreview
+
+                        Circle()
+                            .fill(ExplorerTheme.goldGradient)
+                            .frame(width: 28, height: 28)
+                            .overlay(
+                                Image(systemName: "photo")
+                                    .font(.system(size: 14, weight: .semibold))
+                                    .foregroundStyle(Color.white)
+                            )
+                            .offset(x: 6, y: 6)
+                            .shadow(color: ExplorerTheme.goldHighlightEnd.opacity(0.3), radius: 8, x: 0, y: 6)
+                    }
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Agentenbild auswählen")
+                .contextMenu {
+                    if agent.avatarImageData != nil {
+                        Button(role: .destructive) {
+                            agent.avatarImageData = nil
+                        } label: {
+                            Label("Bild entfernen", systemImage: "trash")
+                        }
+                    }
+                }
+
                 VStack(alignment: .leading, spacing: 6) {
                     Text("Agent „\(agent.name)“")
                         .font(.explorer(.headline, weight: .semibold))
@@ -368,6 +400,46 @@ private struct AgentEditorCard: View {
                         .stroke(ExplorerTheme.goldHighlightStart.opacity(0.3), lineWidth: 1.1)
                 )
         )
+        .onChange(of: selectedPhotoItem) { _, newValue in
+            guard let item = newValue else { return }
+            Task {
+                if let data = try? await item.loadTransferable(type: Data.self) {
+                    await MainActor.run {
+                        agent.avatarImageData = data
+                    }
+                }
+                await MainActor.run {
+                    selectedPhotoItem = nil
+                }
+            }
+        }
+    }
+
+    private var avatarPreview: some View {
+        Group {
+            if let data = agent.avatarImageData,
+               let uiImage = UIImage(data: data) {
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                Image(systemName: agent.avatarSystemName)
+                    .resizable()
+                    .scaledToFit()
+                    .padding(16)
+                    .foregroundStyle(ExplorerTheme.goldGradient)
+            }
+        }
+        .frame(width: 72, height: 72)
+        .background(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(ExplorerTheme.surfaceElevated.opacity(0.92))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .stroke(ExplorerTheme.goldHighlightStart.opacity(0.3), lineWidth: 1)
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
     }
 }
 
