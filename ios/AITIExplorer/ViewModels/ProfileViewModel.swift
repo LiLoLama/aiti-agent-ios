@@ -72,7 +72,7 @@ final class ProfileViewModel: ObservableObject {
     }
 
     func saveAgentChanges(showToast: Bool = false) {
-        persistAgents(showToast: showToast)
+        persistAgents(shouldShowToast: showToast)
     }
 }
 
@@ -81,10 +81,10 @@ private extension ProfileViewModel {
         appState?.updateCurrentUser(profile)
     }
 
-    func persistAgents(showToast: Bool = false) {
+    func persistAgents(shouldShowToast: Bool = false) {
         profile.agents = agents
         persistProfileChanges()
-        if showToast {
+        if shouldShowToast {
             showToast(message: "Agents aktualisiert")
         }
     }
