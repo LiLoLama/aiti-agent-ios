@@ -7,10 +7,54 @@ struct ChatContainerView: View {
     @State private var showSearchSheet = false
     @StateObject private var profileViewModel = ProfileViewModel()
     @State private var isPresentingAgentManager = false
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+    @State private var navigationPath = NavigationPath()
 
     var body: some View {
+        Group {
+            if horizontalSizeClass == .compact {
+                compactLayout
+            } else {
+                splitLayout
+            }
+        }
+        .explorerBackground()
+        .onAppear {
+            viewModel.attach(appState: appState)
+            if viewModel.selectedAgent == nil, let agent = appState.currentUser?.agents.first {
+                viewModel.select(agent: agent)
+            }
+            viewModel.isShowingOverviewOnPhone = false
+            viewModel.isSearching = false
+            profileViewModel.attach(appState: appState)
+        }
+        .sheet(isPresented: $showSearchSheet, onDismiss: {
+            viewModel.isSearching = false
+        }) {
+            NavigationStack {
+                SearchResultsView(
+                    query: $viewModel.searchQuery,
+                    results: viewModel.searchResults,
+                    isSearching: viewModel.isSearching
+                )
+            }
+            .explorerBackground()
+            .presentationDetents([.medium, .large])
+        }
+        .sheet(isPresented: $isPresentingAgentManager) {
+            NavigationStack {
+                AgentManagementScreen(viewModel: profileViewModel)
+            }
+            .explorerBackground()
+        }
+    }
+
+    private var splitLayout: some View {
         NavigationSplitView(columnVisibility: .constant(.automatic)) {
-            chatList
+            chatList { agent in
+                viewModel.select(agent: agent)
+            }
+            .navigationTitle("Workspace")
         } detail: {
             if let agent = viewModel.selectedAgent {
                 ChatDetailView(
@@ -43,55 +87,41 @@ struct ChatContainerView: View {
             }
         }
         .navigationSplitViewStyle(.balanced)
-        .explorerBackground()
-        .onAppear {
-            viewModel.attach(appState: appState)
-            if viewModel.selectedAgent == nil, let agent = appState.currentUser?.agents.first {
+    }
+
+    private var compactLayout: some View {
+        NavigationStack(path: $navigationPath) {
+            chatList { agent in
                 viewModel.select(agent: agent)
+                navigationPath = NavigationPath()
+                navigationPath.append(agent.id)
             }
-            viewModel.isShowingOverviewOnPhone = false
-            viewModel.isSearching = false
-            profileViewModel.attach(appState: appState)
-        }
-        .sheet(isPresented: $showSearchSheet, onDismiss: {
-            viewModel.isSearching = false
-        }) {
-            NavigationStack {
-                SearchResultsView(
-                    query: $viewModel.searchQuery,
-                    results: viewModel.searchResults,
-                    isSearching: viewModel.isSearching
-                )
+            .navigationTitle("Workspace")
+            .navigationDestination(for: UUID.self) { id in
+                if let agent = viewModel.agents.first(where: { $0.id == id }) {
+                    ChatDetailView(
+                        agent: agent,
+                        draftedMessage: $draftedMessage,
+                        onSend: { text, attachments in
+                            viewModel.sendMessage(text, attachments: attachments)
+                            draftedMessage = ""
+                        },
+                        pendingResponse: viewModel.pendingResponse
+                    )
+                    .toolbar { toolbarItems }
+                }
             }
-            .explorerBackground()
-            .presentationDetents([.medium, .large])
-        }
-        .sheet(isPresented: $isPresentingAgentManager) {
-            NavigationStack {
-                AgentManagementScreen(viewModel: profileViewModel)
-            }
-            .explorerBackground()
         }
     }
 
-    private var chatList: some View {
+    private func chatList(onSelect: @escaping (AgentProfile) -> Void) -> some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 28) {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Workspace")
-                        .font(.explorer(.title2, weight: .semibold))
-                        .foregroundStyle(ExplorerTheme.textPrimary)
-
-                    Text("Wähle einen Agenten, um in den Dialog einzusteigen oder neue Tools zuzuweisen.")
-                        .font(.explorer(.footnote))
-                        .foregroundStyle(ExplorerTheme.textSecondary)
-                }
-
                 LazyVStack(spacing: 18) {
                     ForEach(viewModel.agents) { agent in
                         let isSelected = agent.id == viewModel.selectedAgentID
                         Button {
-                            viewModel.select(agent: agent)
+                            onSelect(agent)
                         } label: {
                             AgentOverviewCard(agent: agent, isSelected: isSelected)
                         }
@@ -140,8 +170,6 @@ struct ChatContainerView: View {
             .padding(.horizontal, 24)
             .padding(.vertical, 28)
         }
-        .explorerBackground()
-        .navigationTitle("Workspace")
     }
 
     @ToolbarContentBuilder

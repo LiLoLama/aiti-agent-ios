@@ -19,8 +19,6 @@ struct ProfileScreen: View {
 
                     statusCards
 
-                    themeToggleCard
-
                     agentsCard
 
                     sessionCard
@@ -60,9 +58,9 @@ struct ProfileScreen: View {
                             Circle()
                                 .stroke(ExplorerTheme.goldHighlightStart.opacity(0.35), lineWidth: 1.2)
                         )
-                    Image(systemName: viewModel.profile.avatarSystemName)
-                        .font(.system(size: 34))
-                        .foregroundStyle(ExplorerTheme.goldGradient)
+                    Text(profileInitials)
+                        .font(.explorer(.title, weight: .bold))
+                        .foregroundStyle(ExplorerTheme.textPrimary)
 
                     Button(action: {}) {
                         Label("Avatar wechseln", systemImage: "photo")
@@ -142,20 +140,20 @@ struct ProfileScreen: View {
     private var statusCards: some View {
         ViewThatFits {
             HStack(spacing: 18) {
-                statusTile(title: "Status", subtitle: viewModel.statusLabel, description: viewModel.statusDescription, accent: ExplorerTheme.success)
+                statusTile(title: "Status", subtitle: viewModel.statusLabel, description: nil, accent: ExplorerTheme.success)
 
                 statusTile(title: "Agents", subtitle: "\(viewModel.agents.count)", description: viewModel.agentCountText, accent: ExplorerTheme.goldHighlightStart)
             }
 
             VStack(spacing: 18) {
-                statusTile(title: "Status", subtitle: viewModel.statusLabel, description: viewModel.statusDescription, accent: ExplorerTheme.success)
+                statusTile(title: "Status", subtitle: viewModel.statusLabel, description: nil, accent: ExplorerTheme.success)
 
                 statusTile(title: "Agents", subtitle: "\(viewModel.agents.count)", description: viewModel.agentCountText, accent: ExplorerTheme.goldHighlightStart)
             }
         }
     }
 
-    private func statusTile(title: String, subtitle: String, description: String, accent: Color) -> some View {
+    private func statusTile(title: String, subtitle: String, description: String?, accent: Color) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(title)
                 .font(.explorer(.caption, weight: .semibold))
@@ -164,9 +162,11 @@ struct ProfileScreen: View {
             Text(subtitle)
                 .font(.explorer(.title3, weight: .semibold))
                 .foregroundStyle(accent)
-            Text(description)
-                .font(.explorer(.caption))
-                .foregroundStyle(ExplorerTheme.textMuted)
+            if let description, !description.isEmpty {
+                Text(description)
+                    .font(.explorer(.caption))
+                    .foregroundStyle(ExplorerTheme.textMuted)
+            }
         }
         .padding(20)
         .frame(maxWidth: .infinity)
@@ -174,66 +174,6 @@ struct ProfileScreen: View {
             RoundedRectangle(cornerRadius: 26, style: .continuous)
                 .fill(ExplorerTheme.surface.opacity(0.85))
         )
-    }
-
-    private var themeToggleCard: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("Farbschema Schnellwahl")
-                .font(.explorer(.headline, weight: .semibold))
-                .foregroundStyle(ExplorerTheme.textPrimary)
-
-            Text("Wechsle zwischen hellen und dunklen Layouts – oder folge dem System.")
-                .font(.explorer(.footnote))
-                .foregroundStyle(ExplorerTheme.textSecondary)
-
-            HStack(spacing: 16) {
-                themeOption(title: "Dunkel", icon: "moon.fill", option: .dark)
-                themeOption(title: "Hell", icon: "sun.max.fill", option: .light)
-                themeOption(title: "System", icon: "desktopcomputer", option: .system)
-            }
-        }
-        .padding(24)
-        .background(
-            RoundedRectangle(cornerRadius: 30, style: .continuous)
-                .fill(ExplorerTheme.surface.opacity(0.9))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 30, style: .continuous)
-                        .stroke(ExplorerTheme.goldHighlightStart.opacity(0.3), lineWidth: 1.1)
-                )
-        )
-    }
-
-    private func themeOption(title: String, icon: String, option: ColorSchemeOption) -> some View {
-        let isSelected = appState.settings.colorScheme == option
-        let backgroundFill: AnyShapeStyle = isSelected
-            ? AnyShapeStyle(ExplorerTheme.goldGradient.opacity(0.22))
-            : AnyShapeStyle(ExplorerTheme.surfaceElevated.opacity(0.85))
-
-        return Button {
-            var settings = appState.settings
-            settings.colorScheme = option
-            appState.updateSettings(settings)
-        } label: {
-            VStack(spacing: 12) {
-                Image(systemName: icon)
-                    .font(.system(size: 24, weight: .semibold))
-                Text(title)
-                    .font(.explorer(.footnote, weight: .medium))
-            }
-            .padding(.vertical, 20)
-            .frame(maxWidth: .infinity)
-            .background(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .fill(backgroundFill)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                    .stroke(isSelected ? ExplorerTheme.goldHighlightStart.opacity(0.6) : ExplorerTheme.divider, lineWidth: isSelected ? 1.4 : 1)
-            )
-            .shadow(color: ExplorerTheme.goldHighlightEnd.opacity(isSelected ? 0.35 : 0.12), radius: isSelected ? 18 : 12, x: 0, y: isSelected ? 12 : 8)
-            .foregroundStyle(isSelected ? ExplorerTheme.textPrimary : ExplorerTheme.textSecondary)
-        }
-        .buttonStyle(.plain)
     }
 
     private var agentsCard: some View {
@@ -314,6 +254,22 @@ struct ProfileScreen: View {
             RoundedRectangle(cornerRadius: 30, style: .continuous)
                 .fill(ExplorerTheme.surface.opacity(0.9))
         )
+    }
+}
+
+private extension ProfileScreen {
+    var profileInitials: String {
+        let trimmed = viewModel.profile.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let components = trimmed.split(separator: " ")
+        let firstLetters = components.prefix(2).compactMap { $0.first }
+        let initials = firstLetters.map { String($0) }.joined()
+        if !initials.isEmpty {
+            return initials.uppercased()
+        }
+        if let first = trimmed.first {
+            return String(first).uppercased()
+        }
+        return "AI"
     }
 }
 

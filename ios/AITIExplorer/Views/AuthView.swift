@@ -20,55 +20,22 @@ struct AuthView: View {
                 ExplorerTheme.backgroundGradient
                     .ignoresSafeArea()
 
-                if isCompact {
-                    compactLayout
-                        .padding(.vertical, 32)
-                        .padding(.horizontal, 24)
-                } else {
-                    HStack(spacing: 32) {
-                        heroPanel
-                            .frame(width: max(proxy.size.width * 0.42, 360))
+                VStack {
+                    Spacer(minLength: isCompact ? 32 : 72)
 
-                        formPanel
-                            .frame(maxWidth: 460)
-                    }
-                    .padding(.horizontal, 48)
+                    formPanel
+                        .frame(maxWidth: 480)
+                        .padding(.horizontal, isCompact ? 24 : 48)
+
+                    Spacer(minLength: isCompact ? 24 : 80)
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
         .scrollDismissesKeyboard(.interactively)
         .dismissFocusOnInteract($focusedField)
         .onAppear {
             viewModel.attach(appState: appState)
-        }
-    }
-
-    private var compactLayout: some View {
-        VStack(spacing: 28) {
-            heroPanel
-            formPanel
-        }
-    }
-
-    private var heroPanel: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 32, style: .continuous)
-                .fill(ExplorerTheme.goldGradient.opacity(0.22))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 32, style: .continuous)
-                        .stroke(ExplorerTheme.goldHighlightStart.opacity(0.6), lineWidth: 1.4)
-                )
-                .shadow(color: ExplorerTheme.goldHighlightEnd.opacity(0.35), radius: 30, x: 0, y: 22)
-
-            VStack(alignment: .center, spacing: 20) {
-                Image(systemName: "bolt.badge.a.fill")
-                    .font(.system(size: 64, weight: .medium))
-                    .foregroundStyle(ExplorerTheme.goldGradient)
-                    .shadow(color: ExplorerTheme.goldHighlightEnd.opacity(0.5), radius: 20, x: 0, y: 14)
-
-                Spacer(minLength: 0)
-            }
-            .padding(48)
         }
     }
 

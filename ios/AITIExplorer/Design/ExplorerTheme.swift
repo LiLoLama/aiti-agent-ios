@@ -1,14 +1,15 @@
 import SwiftUI
+import UIKit
 
 enum ExplorerTheme {
-    static let backgroundTop = Color(hex: "#181818")
-    static let backgroundBottom = Color(hex: "#101010")
-    static let surface = Color(hex: "#212121")
-    static let surfaceElevated = Color(hex: "#2a2a2a")
-    static let divider = Color.white.opacity(0.08)
-    static let textPrimary = Color.white
-    static let textSecondary = Color.white.opacity(0.72)
-    static let textMuted = Color.white.opacity(0.48)
+    static let backgroundTop = dynamicColor(lightHex: "#F5F6FB", darkHex: "#181818")
+    static let backgroundBottom = dynamicColor(lightHex: "#E9ECF5", darkHex: "#101010")
+    static let surface = dynamicColor(lightHex: "#FFFFFF", darkHex: "#212121")
+    static let surfaceElevated = dynamicColor(lightHex: "#F8F9FF", darkHex: "#2A2A2A")
+    static let divider = dynamicColor(lightHex: "#D7DAE5", darkHex: "#14FFFFFF")
+    static let textPrimary = dynamicColor(lightHex: "#111827", darkHex: "#FFFFFF")
+    static let textSecondary = dynamicColor(lightHex: "#4B5563", darkHex: "#B8FFFFFF")
+    static let textMuted = dynamicColor(lightHex: "#6B7280", darkHex: "#7AFFFFFF")
     static let goldHighlightStart = Color(hex: "#FACF39")
     static let goldHighlightEnd = Color(hex: "#f9c307")
     static let success = Color(hex: "#34D399")
@@ -45,12 +46,20 @@ enum ExplorerTheme {
                 backgroundGradient
             } else {
                 LinearGradient(
-                    colors: [Color.white, Color(hex: "#f4f6fb")],
+                    colors: [Color.white, Color(hex: "#f3f5fb")],
                     startPoint: .topLeading,
                     endPoint: .bottomTrailing
                 )
             }
         }
+    }
+
+    private static func dynamicColor(lightHex: String, darkHex: String) -> Color {
+        let light = UIColor(hex: lightHex)
+        let dark = UIColor(hex: darkHex)
+        return Color(UIColor { traits in
+            traits.userInterfaceStyle == .dark ? dark : light
+        })
     }
 }
 
@@ -78,6 +87,33 @@ extension Color {
             green: Double(g) / 255,
             blue: Double(b) / 255,
             opacity: Double(a) / 255
+        )
+    }
+}
+
+private extension UIColor {
+    convenience init(hex: String) {
+        let hexSanitized = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+        var int: UInt64 = 0
+        Scanner(string: hexSanitized).scanHexInt64(&int)
+
+        let a, r, g, b: UInt64
+        switch hexSanitized.count {
+        case 3:
+            (a, r, g, b) = (255, (int >> 8) * 17, (int >> 4 & 0xF) * 17, (int & 0xF) * 17)
+        case 6:
+            (a, r, g, b) = (255, int >> 16, int >> 8 & 0xFF, int & 0xFF)
+        case 8:
+            (a, r, g, b) = (int >> 24, int >> 16 & 0xFF, int >> 8 & 0xFF, int & 0xFF)
+        default:
+            (a, r, g, b) = (255, 0, 0, 0)
+        }
+
+        self.init(
+            red: CGFloat(r) / 255,
+            green: CGFloat(g) / 255,
+            blue: CGFloat(b) / 255,
+            alpha: CGFloat(a) / 255
         )
     }
 }
