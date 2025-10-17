@@ -8,6 +8,7 @@ struct UserProfile: Identifiable, Codable, Hashable {
     var avatarSystemName: String
     var avatarImageData: Data?
     var isActive: Bool
+    var role: UserRole
     var agents: [AgentProfile]
 
     init(
@@ -18,6 +19,7 @@ struct UserProfile: Identifiable, Codable, Hashable {
         avatarSystemName: String = "person.crop.circle.fill",
         avatarImageData: Data? = nil,
         isActive: Bool = true,
+        role: UserRole = .user,
         agents: [AgentProfile] = []
     ) {
         self.id = id
@@ -27,6 +29,7 @@ struct UserProfile: Identifiable, Codable, Hashable {
         self.avatarSystemName = avatarSystemName
         self.avatarImageData = avatarImageData
         self.isActive = isActive
+        self.role = role
         self.agents = agents
     }
 }

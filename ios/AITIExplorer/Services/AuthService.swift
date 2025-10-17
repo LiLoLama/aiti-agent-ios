@@ -5,6 +5,8 @@ protocol AuthServicing {
     func register(name: String, email: String, password: String) async throws -> UserProfile
     func logout() async throws
     func updateProfile(_ profile: UserProfile) async throws
+    func fetchAllProfiles() async throws -> [UserProfile]
+    func updateUserStatus(userId: UUID, isActive: Bool) async throws
 }
 
 enum AuthServiceError: LocalizedError {

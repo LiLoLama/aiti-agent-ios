@@ -112,6 +112,10 @@ extension ProfileViewModel {
         profile.isActive ? "Aktiv" : "Inaktiv"
     }
 
+    var canManageUsers: Bool {
+        profile.role.isAdmin
+    }
+
     func updateAvatar(with data: Data?) {
         avatarImageData = data
         profile.avatarImageData = data

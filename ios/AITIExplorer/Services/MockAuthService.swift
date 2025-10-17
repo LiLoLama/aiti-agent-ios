@@ -47,6 +47,15 @@ final class MockAuthService: AuthServicing {
             registeredUsers[index].profile = profile
         }
     }
+
+    func fetchAllProfiles() async throws -> [UserProfile] {
+        registeredUsers.map { $0.profile }
+    }
+
+    func updateUserStatus(userId: UUID, isActive: Bool) async throws {
+        guard let index = registeredUsers.firstIndex(where: { $0.profile.id == userId }) else { return }
+        registeredUsers[index].profile.isActive = isActive
+    }
 }
 
 struct MockCredentials: Identifiable, Hashable {
