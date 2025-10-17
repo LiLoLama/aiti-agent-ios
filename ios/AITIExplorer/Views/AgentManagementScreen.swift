@@ -20,6 +20,7 @@ struct AgentManagementScreen: View {
     @State private var newAgentTools: [AgentTool] = []
     @State private var webhookStatus: [UUID: WebhookTestState] = [:]
     @State private var agentPendingRemoval: AgentProfile?
+    @State private var showSaveConfirmation = false
     @FocusState private var focusedField: AgentField?
 
     var body: some View {
@@ -59,6 +60,11 @@ struct AgentManagementScreen: View {
             }
         } message: { agent in
             Text("Soll der Agent „\(agent.name)“ wirklich entfernt werden?")
+        }
+        .alert("Änderungen gespeichert", isPresented: $showSaveConfirmation) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text("Deine Agenten wurden erfolgreich aktualisiert.")
         }
         .onDisappear {
             viewModel.saveAgentChanges()
@@ -230,6 +236,7 @@ struct AgentManagementScreen: View {
         ToolbarItem(placement: .navigationBarTrailing) {
             Button {
                 viewModel.saveAgentChanges(showToast: true)
+                showSaveConfirmation = true
             } label: {
                 Text("Änderungen sichern")
                     .font(.explorer(.callout, weight: .semibold))

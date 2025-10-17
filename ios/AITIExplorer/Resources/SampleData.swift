@@ -102,22 +102,28 @@ enum SampleData {
         )
     }
 
-    static var previewUser: UserProfile {
+    static var baseUserProfile: UserProfile {
         UserProfile(
             name: "Alex Example",
             email: "demo@aiti.ai",
             bio: "Leitet AI-gestützte Innovationsprojekte im Team.",
             avatarSystemName: "person.crop.circle.fill.badge.checkmark",
             isActive: true,
-            agents: [marketingAgent, productAgent, researchAgent]
+            agents: []
         )
+    }
+
+    static var previewUser: UserProfile {
+        var profile = baseUserProfile
+        profile.agents = [marketingAgent, productAgent, researchAgent]
+        return profile
     }
 
     static var demoCredentials: UserCredentials {
         UserCredentials(
             email: "demo@aiti.ai",
             password: "SwiftRocks!",
-            profile: previewUser
+            profile: baseUserProfile
         )
     }
 

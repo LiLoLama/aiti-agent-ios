@@ -9,6 +9,7 @@ private enum ProfileField: Hashable {
 
 struct ProfileScreen: View {
     @EnvironmentObject private var appState: AppState
+    @Environment(\.colorScheme) private var colorScheme
     @StateObject private var viewModel = ProfileViewModel()
     @FocusState private var focusedField: ProfileField?
     @State private var showAgentManager = false
@@ -69,11 +70,11 @@ struct ProfileScreen: View {
                 PhotosPicker(selection: $selectedPhotoItem, matching: .images) {
                     ZStack(alignment: .bottomTrailing) {
                         Circle()
-                            .fill(ExplorerTheme.surface.opacity(0.85))
+                            .fill(elementBackgroundColor)
                             .frame(width: 86, height: 86)
                             .overlay(
                                 Circle()
-                                    .stroke(ExplorerTheme.goldHighlightStart.opacity(0.35), lineWidth: 1.2)
+                                    .stroke(ExplorerTheme.goldHighlightStart.opacity(colorScheme == .dark ? 0.35 : 0.24), lineWidth: 1.2)
                             )
 
                         avatarContent
@@ -110,11 +111,11 @@ struct ProfileScreen: View {
                 .padding(.vertical, 14)
                 .background(
                     RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .fill(ExplorerTheme.surface.opacity(0.85))
+                        .fill(elementBackgroundColor)
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .stroke(ExplorerTheme.goldHighlightStart.opacity(0.3), lineWidth: 1)
+                        .stroke(cardBorderColor, lineWidth: 1)
                 )
                 .font(.explorer(.callout))
                 .foregroundStyle(ExplorerTheme.textPrimary)
@@ -126,11 +127,11 @@ struct ProfileScreen: View {
                 .padding(.vertical, 14)
                 .background(
                     RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .fill(ExplorerTheme.surface.opacity(0.85))
+                        .fill(elementBackgroundColor)
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .stroke(ExplorerTheme.goldHighlightStart.opacity(0.3), lineWidth: 1)
+                        .stroke(cardBorderColor, lineWidth: 1)
                 )
                 .font(.explorer(.callout))
                 .foregroundStyle(ExplorerTheme.textPrimary)
@@ -147,10 +148,10 @@ struct ProfileScreen: View {
         .padding(26)
         .background(
             RoundedRectangle(cornerRadius: 32, style: .continuous)
-                .fill(ExplorerTheme.surface.opacity(0.92))
+                .fill(cardBackgroundColor)
                 .overlay(
                     RoundedRectangle(cornerRadius: 32, style: .continuous)
-                        .stroke(ExplorerTheme.goldHighlightStart.opacity(0.3), lineWidth: 1.2)
+                        .stroke(cardBorderColor, lineWidth: 1.2)
                 )
         )
     }
@@ -190,7 +191,7 @@ struct ProfileScreen: View {
         .frame(maxWidth: .infinity)
         .background(
             RoundedRectangle(cornerRadius: 26, style: .continuous)
-                .fill(ExplorerTheme.surface.opacity(0.85))
+                .fill(elementBackgroundColor)
         )
     }
 
@@ -222,7 +223,7 @@ struct ProfileScreen: View {
                 .padding(.vertical, 16)
                 .background(
                     RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .fill(ExplorerTheme.surfaceElevated.opacity(0.85))
+                        .fill(elevatedCardBackgroundColor)
                 )
             }
             .buttonStyle(.plain)
@@ -230,10 +231,10 @@ struct ProfileScreen: View {
         .padding(26)
         .background(
             RoundedRectangle(cornerRadius: 32, style: .continuous)
-                .fill(ExplorerTheme.surface.opacity(0.92))
+                .fill(cardBackgroundColor)
                 .overlay(
                     RoundedRectangle(cornerRadius: 32, style: .continuous)
-                        .stroke(ExplorerTheme.goldHighlightStart.opacity(0.3), lineWidth: 1.1)
+                        .stroke(cardBorderColor, lineWidth: 1.1)
                 )
         )
     }
@@ -270,7 +271,7 @@ struct ProfileScreen: View {
         .padding(24)
         .background(
             RoundedRectangle(cornerRadius: 30, style: .continuous)
-                .fill(ExplorerTheme.surface.opacity(0.9))
+                .fill(cardBackgroundColor)
         )
     }
 }
@@ -294,11 +295,28 @@ private extension ProfileScreen {
         .frame(width: 86, height: 86)
         .clipShape(Circle())
     }
+
+    var cardBackgroundColor: Color {
+        colorScheme == .dark ? ExplorerTheme.surface.opacity(0.92) : Color.white.opacity(0.97)
+    }
+
+    var elevatedCardBackgroundColor: Color {
+        colorScheme == .dark ? ExplorerTheme.surfaceElevated.opacity(0.9) : Color.white.opacity(0.96)
+    }
+
+    var elementBackgroundColor: Color {
+        colorScheme == .dark ? ExplorerTheme.surface.opacity(0.85) : Color.white
+    }
+
+    var cardBorderColor: Color {
+        ExplorerTheme.goldHighlightStart.opacity(colorScheme == .dark ? 0.3 : 0.2)
+    }
 }
 
 private struct ToastModifier: ViewModifier {
     let message: String
     @Binding var isPresented: Bool
+    @Environment(\.colorScheme) private var colorScheme
 
     func body(content: Content) -> some View {
         ZStack {
@@ -312,11 +330,11 @@ private struct ToastModifier: ViewModifier {
                         .padding(.vertical, 12)
                         .background(
                             Capsule()
-                                .fill(ExplorerTheme.surface.opacity(0.9))
+                                .fill(toastBackgroundColor)
                         )
                         .overlay(
                             Capsule()
-                                .stroke(ExplorerTheme.goldHighlightStart.opacity(0.4), lineWidth: 1)
+                                .stroke(toastBorderColor, lineWidth: 1)
                         )
                         .shadow(color: Color.black.opacity(0.4), radius: 14, x: 0, y: 8)
                         .padding(.bottom, 24)
@@ -325,6 +343,16 @@ private struct ToastModifier: ViewModifier {
             }
         }
         .animation(.spring(response: 0.5, dampingFraction: 0.9), value: isPresented)
+    }
+}
+
+private extension ToastModifier {
+    var toastBackgroundColor: Color {
+        colorScheme == .dark ? ExplorerTheme.surface.opacity(0.9) : Color.white.opacity(0.96)
+    }
+
+    var toastBorderColor: Color {
+        ExplorerTheme.goldHighlightStart.opacity(colorScheme == .dark ? 0.4 : 0.25)
     }
 }
 
