@@ -55,7 +55,7 @@ final class AdminUserManagementViewModel: ObservableObject {
             do {
                 try await appState.updateUserStatus(userId: user.id, isActive: isActive)
             } catch {
-                await MainActor.run {
+                _ = await MainActor.run {
                     if let revertIndex = self.users.firstIndex(where: { $0.id == user.id }) {
                         self.users[revertIndex].isActive = previousValue
                     }
@@ -63,7 +63,7 @@ final class AdminUserManagementViewModel: ObservableObject {
                 }
             }
 
-            await MainActor.run {
+            _ = await MainActor.run {
                 self.updatingUserIDs.remove(user.id)
             }
         }
