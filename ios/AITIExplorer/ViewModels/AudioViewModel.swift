@@ -415,12 +415,24 @@ final class AudioViewModel: NSObject, ObservableObject {
     }
 
     private func currentRecordPermission() -> AVAudioSession.RecordPermission {
-        return audioSession.recordPermission
+        if #available(iOS 17, *) {
+            // Die neue API gibt AVAudioApplication.RecordPermission zurück, das in AVAudioSession.RecordPermission umgewandelt werden muss.
+            // Da die Enumerationswerte dieselben Rohwerte haben, ist ein direkter Cast sicher.
+            return AVAudioSession.RecordPermission(rawValue: AVAudioApplication.shared.recordPermission.rawValue) ?? .undetermined
+        } else {
+            return audioSession.recordPermission
+        }
     }
 
     private func requestRecordPermission(_ handler: @escaping (Bool) -> Void) {
-        audioSession.requestRecordPermission { allowed in
-            handler(allowed)
+        if #available(iOS 17, *) {
+            AVAudioApplication.requestRecordPermission { allowed in
+                handler(allowed)
+            }
+        } else {
+            audioSession.requestRecordPermission { allowed in
+                handler(allowed)
+            }
         }
     }
 
