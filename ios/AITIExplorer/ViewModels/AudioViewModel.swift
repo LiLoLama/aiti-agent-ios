@@ -415,31 +415,12 @@ final class AudioViewModel: NSObject, ObservableObject {
     }
 
     private func currentRecordPermission() -> AVAudioSession.RecordPermission {
-        if #available(iOS 17, *) {
-            switch AVAudioApplication.shared.recordPermission {
-            case .undetermined:
-                return .undetermined
-            case .denied:
-                return .denied
-            case .granted:
-                return .granted
-            @unknown default:
-                return .undetermined
-            }
-        } else {
-            return audioSession.recordPermission
-        }
+        return audioSession.recordPermission
     }
 
     private func requestRecordPermission(_ handler: @escaping (Bool) -> Void) {
-        if #available(iOS 17, *) {
-            AVAudioApplication.requestRecordPermission { allowed in
-                handler(allowed)
-            }
-        } else {
-            audioSession.requestRecordPermission { allowed in
-                handler(allowed)
-            }
+        audioSession.requestRecordPermission { allowed in
+            handler(allowed)
         }
     }
 
