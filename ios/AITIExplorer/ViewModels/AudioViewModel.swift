@@ -419,7 +419,8 @@ final class AudioViewModel: NSObject, ObservableObject {
             // Die neue API gibt AVAudioApplication.RecordPermission zurück, das in AVAudioSession.RecordPermission umgewandelt werden muss.
             // Da die Enumerationswerte dieselben Rohwerte haben, ist ein direkter Cast sicher.
             // Korrektur des Typfehlers: rawValue von AVAudioApplication.RecordPermission ist Int, erwartet wird UInt.
-            return AVAudioSession.RecordPermission(rawValue: UInt(AVAudioApplication.shared.recordPermission.rawValue)) ?? .undetermined
+            // Behebung der letzten Deprecation-Warnung durch Initialisierung des Fallback-Wertes über den Raw Value.
+            return AVAudioSession.RecordPermission(rawValue: UInt(AVAudioApplication.shared.recordPermission.rawValue)) ?? AVAudioSession.RecordPermission(rawValue: 0)!
         } else {
             return audioSession.recordPermission
         }
