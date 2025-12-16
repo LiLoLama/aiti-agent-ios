@@ -15,13 +15,15 @@ final class AppState: ObservableObject {
     @Published var selectedTab: Tab = .chat
 
     private let authService: AuthServicing
+    private let sessionStore: UserSessionStore
     private var cancellables = Set<AnyCancellable>()
 
-    init(previewUser: UserProfile? = nil, authService: AuthServicing = MockAuthService()) {
+    init(previewUser: UserProfile? = nil, authService: AuthServicing = MockAuthService(), sessionStore: UserSessionStore = UserSessionStore()) {
         self.authService = authService
+        self.sessionStore = sessionStore
         let defaults = SampleData.defaultSettings
         self.settings = defaults
-        self.currentUser = previewUser
+        self.currentUser = previewUser ?? sessionStore.load()
 
         $settings
             .dropFirst()
@@ -34,12 +36,14 @@ final class AppState: ObservableObject {
     func login(email: String, password: String) async throws {
         let profile = try await authService.login(email: email, password: password)
         currentUser = profile
+        sessionStore.save(profile)
         selectedTab = .chat
     }
 
     func register(name: String, email: String, password: String) async throws {
         let profile = try await authService.register(name: name, email: email, password: password)
         currentUser = profile
+        sessionStore.save(profile)
         selectedTab = .profile
     }
 
@@ -48,6 +52,7 @@ final class AppState: ObservableObject {
             try? await authService.logout()
         }
         currentUser = nil
+        sessionStore.clear()
         selectedTab = .chat
     }
 
@@ -56,6 +61,7 @@ final class AppState: ObservableObject {
         Task {
             try? await authService.updateProfile(profile)
         }
+        sessionStore.save(profile)
     }
 
     func updateSettings(_ settings: AgentSettingsModel) {
